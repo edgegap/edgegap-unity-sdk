@@ -256,6 +256,7 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
                 )
                 {
                     StatusDisplay.text = "Match found, awaiting assignment";
+                    DisconnectButton.SetActive(false);
                 }
 
                 if (
@@ -281,6 +282,7 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
                         $"MM ClientHandler | Joining game: {assignment.Current.Assignment.Ports["gameport"].Link}"
                     );
 
+                    DisconnectButton.GetComponentInChildren<Text>().text = "Disconnect";
                     DisconnectButton.SetActive(true);
                     DisconnectButton.GetComponent<Button>().interactable = false;
                 }
@@ -352,13 +354,27 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
         }
 
         StatusDisplay.text = $"Selected region: {cityName}\nMatchmaking in progress...";
+
+        DisconnectButton.GetComponentInChildren<Text>().text = "Cancel";
+        DisconnectButton.SetActive(true);
+        DisconnectButton.GetComponent<Button>().interactable = true;
     }
 
     public void Disconnect()
     {
         DisconnectButton.SetActive(false);
-        StatusDisplay.text = "Disconnecting from server, returning to matchmaking";
-        L.Log("MM ClientHandler | Disconnecting from server, returning to matchmaking.");
+
+        if (DisconnectButton.GetComponentInChildren<Text>().text == "Cancel")
+        {
+            StatusDisplay.text = "Cancelling ticket, returning to matchmaking";
+            L.Log("MM ClientHandler | Cancelling ticket, returning to matchmaking.");
+        }
+        else
+        {
+            StatusDisplay.text = "Disconnecting from server, returning to matchmaking";
+            L.Log("MM ClientHandler | Disconnecting from server, returning to matchmaking.");
+        }
+
         StopMatchmaking();
     }
 }
