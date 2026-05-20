@@ -1,6 +1,7 @@
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 
-namespace Edgegap.Matchmaking
+namespace Edgegap
 {
     public class LocationDTO
     {

@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
@@ -45,7 +44,7 @@ namespace Edgegap.Matchmaking
             int eloRating,
             string selectedGameMode,
             string[] selectedMap,
-            string selectedRegion
+            string[] backfillGroupSize
         )
             : base("advanced-example")
         {
@@ -54,7 +53,7 @@ namespace Edgegap.Matchmaking
                 eloRating,
                 selectedGameMode,
                 selectedMap,
-                selectedRegion
+                backfillGroupSize
             );
         }
     }
@@ -70,22 +69,22 @@ namespace Edgegap.Matchmaking
         [JsonProperty("selected_map")]
         public string[] SelectedMap;
 
-        [JsonProperty("selected_region")]
-        public string SelectedRegion;
+        [JsonProperty("backfill_group_size")]
+        public string[] BackfillGroupSize;
 
         public AdvancedTicketsAttributesDTO(
             Dictionary<string, float> beacons,
             int eloRating,
             string selectedGameMode,
             string[] selectedMap,
-            string selectedRegion
+            string[] backfillGroupSize
         )
             : base(beacons)
         {
             EloRating = eloRating;
             SelectedGameMode = selectedGameMode;
             SelectedMap = selectedMap;
-            SelectedRegion = selectedRegion;
+            BackfillGroupSize = backfillGroupSize;
         }
     }
 

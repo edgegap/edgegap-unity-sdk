@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Newtonsoft.Json;
 
 namespace Edgegap.Matchmaking
@@ -32,7 +31,7 @@ namespace Edgegap.Matchmaking
         public string? MatchID;
 
         [JsonProperty("assignment")]
-        public AssignmentDTO? Assignment;
+        public DeploymentDTO? Assignment;
 
 #nullable disable
 
@@ -42,4 +41,3 @@ namespace Edgegap.Matchmaking
         }
     }
 }
-

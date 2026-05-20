@@ -1,27 +1,42 @@
 {
-    "name": "com.edgegap.unity-matchmaking-sdk",
-    "version": "2.1.0",
-    "displayName": "Edgegap Matchmaking SDK",
-    "description": "Get started quickly with Edgegap Matchmaking Matchmaking.",
-    "unity": "2021.3",
-    "unityRelease": "0f1",
-    "documentationUrl": "https://docs.edgegap.com/learn/matchmaking/getting-started",
-    "hideInEditor": false,
-    "changelogUrl": "https://docs.edgegap.com/learn/matchmaking/matchmaker-in-depth#changelog",
-    "licensesUrl": "https://choosealicense.com/licenses/mit/",
-    "samples": [
-        {
-            "displayName": "Simple Example",
-            "description": "Minimal Recommended Matchmaking Example.",
-            "path": "Samples~/SimpleExample"
-        }
-    ],
-    "dependencies": {
-        "com.unity.nuget.newtonsoft-json": "3.2.1"
+  "name": "com.edgegap.unity-sdk",
+  "version": "3.0.1",
+  "displayName": "Edgegap SDK",
+  "description": "Get started quickly with Edgegap Matchmaking and Server Browser.",
+  "unity": "2021.3",
+  "unityRelease": "0f1",
+  "documentationUrl": "https://docs.edgegap.com/unity/developer-tools#software-development-kit",
+  "hideInEditor": false,
+  "changelogUrl": "https://docs.edgegap.com/docs/release-notes",
+  "licensesUrl": "https://choosealicense.com/licenses/mit/",
+  "samples": [
+    {
+      "displayName": "Deployment Agent Example",
+      "description": "Get environment variables and stop your Deployment.",
+      "path": "Samples~/DeploymentAgent"
     },
-    "author": {
-        "name": "Edgegap Technologies",
-        "email": "contact@edgegap.com",
-        "url": "https://www.edgegap.com"
+    {
+      "displayName": "Server Browser - Auto-Assign",
+      "description": "Get started with auto-assigned reservations.",
+      "path": "Samples~/ServerBrowserAutoAssign"
+    },
+    {
+      "displayName": "Server Browser - Auto-Assigned",
+      "description": "Provide manual choice to players and/or customize flow with your own reservation logic.",
+      "path": "Samples~/ServerBrowserCustomSearch"
+    },
+    {
+      "displayName": "Matchmaking - Simple Example",
+      "description": "Get started with minimal matchmaking example.",
+      "path": "Samples~/MatchmakingSimple"
     }
+  ],
+  "dependencies": {
+    "com.unity.nuget.newtonsoft-json": "3.2.2"
+  },
+  "author": {
+    "name": "Edgegap Technologies",
+    "email": "contact@edgegap.com",
+    "url": "https://www.edgegap.com"
+  }
 }

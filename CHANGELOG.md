@@ -1,3 +1,3 @@
 # Edgegap Matchmaking SDK Changelog
 
-Please refer to our [Github repository](https://github.com/edgegap/edgegap-unity-matchmaking-sdk/releases) for up-to-date changelog.
+Please refer to our [Github repository](https://github.com/edgegap/edgegap-unity-sdk/releases) for up-to-date changelog.

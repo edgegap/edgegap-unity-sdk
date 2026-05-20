@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Edgegap;
 using Edgegap.Matchmaking;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -7,36 +8,29 @@ using MyTicketsRequestDTO = Edgegap.Matchmaking.SimpleTicketsRequestDTO;
 
 // todo replace SimpleTicketsRequestDTO with CustomTicketsRequestDTO
 // todo replace LatenciesAttributesDTO with CustomTicketsAttributes
-public class MatchmakingClientHandlerExample : MonoBehaviour
+public class MatchmakingClientHandler : MonoBehaviour
 {
-    public static MatchmakingClientHandlerExample Instance { get; private set; }
+    public static MatchmakingClientHandler Instance { get; private set; }
 
-    #region Matchmaking Configuration
+    [Header("Matchmaker Instance")]
     public string BaseUrl;
     public string AuthToken;
 
-    public string ClientVersion = "1.0.0";
-    public bool SaveStateInPlayerPrefs = true;
-    public string PLAYER_PREFS_KEY_VERSION = "EdgegapMatchmakingClientVersion";
-    public string PLAYER_PREFS_KEY_TICKET = "EdgegapMatchmakingClientTicket";
-    public string PLAYER_PREFS_KEY_ASSIGNMENT = "EdgegapMatchmakingClientAssignment";
-
+    [Header("Exponential Retry")]
     public int RequestTimeoutSeconds = 3;
     public float PollingBackoffSeconds = 1f;
     public int MaxConsecutivePollingErrors = 10;
 
+    [Header("Automatic Cleanup")]
     public float RemoveAssignmentSeconds = 30f;
     public bool DeleteTicketOnPause = false;
     public bool DeleteTicketOnQuit = true;
 
-    public bool LogTicketUpdates = true;
+    [Header("Logging")]
     public bool LogAssignmentUpdates = true;
     public bool LogPollingUpdates = false;
-    #endregion
 
     public Client<MyTicketsRequestDTO, MyTicketsAttributes> MatchmakingClient;
-
-    private string State;
 
     public void Awake()
     {
@@ -59,16 +53,10 @@ public class MatchmakingClientHandlerExample : MonoBehaviour
             this,
             BaseUrl,
             AuthToken,
-            ClientVersion,
-            SaveStateInPlayerPrefs,
-            PLAYER_PREFS_KEY_VERSION,
-            PLAYER_PREFS_KEY_TICKET,
-            PLAYER_PREFS_KEY_ASSIGNMENT,
             RequestTimeoutSeconds,
             PollingBackoffSeconds,
             MaxConsecutivePollingErrors,
             RemoveAssignmentSeconds,
-            LogTicketUpdates,
             LogAssignmentUpdates,
             LogPollingUpdates
         );
@@ -84,10 +72,31 @@ public class MatchmakingClientHandlerExample : MonoBehaviour
             {
                 if (action == ObservableActionType.Update)
                 {
-                    if (State is null && message == "healthy")
+                    if (message == "healthy")
                     {
                         // todo update UI
-                        MatchmakingClient.ResumeMatchmaking();
+
+                        MatchmakingClient.Beacons(
+                            (BeaconsResponseDTO beacons) =>
+                            {
+                                Debug.Log($"beacons: {beacons}");
+
+                                MatchmakingClient.MeasureBeaconsRoundTripTime(
+                                    beacons.Beacons,
+                                    (Dictionary<string, float> pings) =>
+                                    {
+                                        MatchmakingClient.StartMatchmaking(
+                                            new MyTicketsRequestDTO(pings)
+                                        );
+                                    }
+                                );
+                            },
+                            (string error, UnityWebRequest request) =>
+                            {
+                                // todo handle beacon downtime, create tickets without beacons?
+                                Debug.Log($"beacon error: {request}");
+                            }
+                        );
                     }
                     else if (message != "healthy")
                     {
@@ -104,32 +113,12 @@ public class MatchmakingClientHandlerExample : MonoBehaviour
                 string message
             ) =>
             {
-                if (action == ObservableActionType.Log && message.Contains("restart suggested"))
-                {
-                    MatchmakingClient.Beacons(
-                        (BeaconsResponseDTO beacons) =>
-                        {
-                            Debug.Log($"beacons: {beacons}");
-
-                            MatchmakingClient.MeasureBeaconsRoundTripTime(
-                                beacons.Beacons,
-                                (Dictionary<string, float> pings) =>
-                                    MatchmakingClient.StartMatchmaking(new MyTicketsRequestDTO(pings))
-                            );
-                        },
-                        (string error, UnityWebRequest request) =>
-                        {
-                            // todo handle beacon downtime, create tickets without beacons?
-                            Debug.Log($"beacon error: {request}");
-                        }
-                    );
-                }
-                else if (
+                if (
                     action == ObservableActionType.Update
                     && (
                         message.Contains("received")
                         || message.Contains("updated")
-                        || message.Contains("abandoned")
+                        || message.Contains("abandon")
                     )
                 )
                 {
@@ -137,15 +126,9 @@ public class MatchmakingClientHandlerExample : MonoBehaviour
                 }
 
                 if (
-                    (
-                        action == ObservableActionType.Update
-                        && message.Contains("updated")
-                        && assignment.Current.Status == "HOST_ASSIGNED"
-                    )
-                    || (
-                        action == ObservableActionType.Log
-                        && message.Contains("reconnect suggested")
-                    )
+                    action == ObservableActionType.Update
+                    && message.Contains("updated")
+                    && assignment.Current.Status == "HOST_ASSIGNED"
                 )
                 {
                     // todo join game on pre-defined game port
@@ -159,7 +142,7 @@ public class MatchmakingClientHandlerExample : MonoBehaviour
 
     public void OnApplicationPause(bool pause)
     {
-        if (!DeleteTicketOnPause || MatchmakingClient.Ticket.Current is null)
+        if (!DeleteTicketOnPause || MatchmakingClient.Assignment.Current is null)
             return;
         StopMatchmaking();
     }
@@ -197,6 +180,9 @@ public class MatchmakingClientHandlerExample : MonoBehaviour
 
     public void StopMatchmaking()
     {
-        MatchmakingClient.StopMatchmaking();
+        if (enabled)
+        {
+            MatchmakingClient.StopMatchmaking();
+        }
     }
 }

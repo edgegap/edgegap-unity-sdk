@@ -1,10 +1,8 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.Networking;
-using Random = UnityEngine.Random;
 
 namespace Edgegap.Matchmaking
 {
@@ -13,11 +11,9 @@ namespace Edgegap.Matchmaking
     public class Api<T, A>
         where T : TicketsRequestDTO<A>
     {
-        internal MonoBehaviour Parent;
+        internal SafeHttpRequest Request;
         internal string AuthToken;
         internal string BaseUrl;
-        internal int RequestTimeoutSeconds;
-        internal Func<float> BackoffSeconds = () => 1 + (0.1f * Random.value);
 
         internal string PATH_MONITOR = "monitor";
         internal string PATH_BEACONS = "locations/beacons";
@@ -25,31 +21,11 @@ namespace Edgegap.Matchmaking
         internal string PATH_GROUP_TICKETS = "group-tickets";
         internal string PATH_GROUP_UP = "groups";
 
-        public Api(
-            MonoBehaviour parent,
-            string authToken,
-            string baseUrl,
-            int requestTimeoutSeconds = 3
-        )
+        public Api(MonoBehaviour parent, string authToken, string baseUrl)
         {
-            Parent = parent;
+            Request = new SafeHttpRequest(parent);
             AuthToken = authToken;
             BaseUrl = baseUrl;
-        }
-
-        public Api(
-            MonoBehaviour parent,
-            string authToken,
-            string baseUrl,
-            Func<float> backoffSeconds,
-            int requestTimeoutSeconds = 3
-        )
-        {
-            Parent = parent;
-            AuthToken = authToken;
-            BaseUrl = baseUrl;
-            RequestTimeoutSeconds = requestTimeoutSeconds;
-            BackoffSeconds = backoffSeconds;
         }
 
         public void GetMonitor(
@@ -57,8 +33,9 @@ namespace Edgegap.Matchmaking
             Action<string, UnityWebRequest> onErrorDelegate
         )
         {
-            Get(
+            Request.Get(
                 $"{BaseUrl}/{PATH_MONITOR}",
+                AuthToken,
                 (string response, UnityWebRequest request) =>
                 {
                     try
@@ -69,14 +46,13 @@ namespace Edgegap.Matchmaking
                     }
                     catch (Exception e)
                     {
-                        L._Error(
-                            $"Couldn't parse monitor, consider updating Matchmaking SDK. {e.Message}"
+                        L.Error(
+                            $"Matchmaking | Couldn't parse monitor, update Edgegap SDK.\n{e.Message}"
                         );
                         throw;
                     }
                 },
-                onErrorDelegate,
-                3
+                onErrorDelegate
             );
         }
 
@@ -85,8 +61,9 @@ namespace Edgegap.Matchmaking
             Action<string, UnityWebRequest> onErrorDelegate
         )
         {
-            Get(
+            Request.Get(
                 $"{BaseUrl}/{PATH_BEACONS}",
+                AuthToken,
                 (string response, UnityWebRequest request) =>
                 {
                     try
@@ -97,14 +74,13 @@ namespace Edgegap.Matchmaking
                     }
                     catch (Exception e)
                     {
-                        L._Error(
-                            $"Couldn't parse beacons, consider updating Matchmaking SDK. {e.Message}"
+                        L.Error(
+                            $"Matchmaking | Couldn't parse beacons, update Edgegap SDK.\n{e.Message}"
                         );
                         throw;
                     }
                 },
-                onErrorDelegate,
-                3
+                onErrorDelegate
             );
         }
 
@@ -114,8 +90,9 @@ namespace Edgegap.Matchmaking
             Action<string, UnityWebRequest> onErrorDelegate
         )
         {
-            Post(
+            Request.Post(
                 $"{BaseUrl}/{PATH_TICKETS}",
+                AuthToken,
                 JsonConvert.SerializeObject(ticket),
                 (string response, UnityWebRequest request) =>
                 {
@@ -127,8 +104,8 @@ namespace Edgegap.Matchmaking
                     }
                     catch (Exception e)
                     {
-                        L._Error(
-                            $"Couldn't parse assignment, consider updating Matchmaking SDK. {e.Message}"
+                        L.Error(
+                            $"Matchmaking | Couldn't parse assignment, update Edgegap SDK.\n{e.Message}"
                         );
                         throw;
                     }
@@ -143,8 +120,9 @@ namespace Edgegap.Matchmaking
             Action<string, UnityWebRequest> onErrorDelegate
         )
         {
-            Post(
+            Request.Post(
                 $"{BaseUrl}/{PATH_GROUP_TICKETS}",
+                AuthToken,
                 JsonConvert.SerializeObject(groupTicket),
                 (string response, UnityWebRequest request) =>
                 {
@@ -156,8 +134,8 @@ namespace Edgegap.Matchmaking
                     }
                     catch (Exception e)
                     {
-                        L._Error(
-                            $"Couldn't parse assignment, consider updating Matchmaking SDK. {e.Message}"
+                        L.Error(
+                            $"Matchmaking | Couldn't parse assignment, update Edgegap SDK.\n{e.Message}"
                         );
                         throw;
                     }
@@ -172,8 +150,9 @@ namespace Edgegap.Matchmaking
             Action<string, UnityWebRequest> onErrorDelegate
         )
         {
-            Get(
+            Request.Get(
                 $"{BaseUrl}/{PATH_TICKETS}/{ticketID}",
+                AuthToken,
                 (string response, UnityWebRequest request) =>
                 {
                     try
@@ -184,8 +163,8 @@ namespace Edgegap.Matchmaking
                     }
                     catch (Exception e)
                     {
-                        L._Error(
-                            $"Couldn't parse assignment, consider updating Matchmaking SDK. {e.Message}"
+                        L.Error(
+                            $"Matchmaking | Couldn't parse assignment, update Edgegap SDK.\n{e.Message}"
                         );
                         throw;
                     }
@@ -200,8 +179,9 @@ namespace Edgegap.Matchmaking
             Action<string, UnityWebRequest> onErrorDelegate
         )
         {
-            Delete(
+            Request.Delete(
                 $"{BaseUrl}/{PATH_TICKETS}/{ticketID}",
+                AuthToken,
                 (string response, UnityWebRequest request) =>
                 {
                     onSuccessDelegate(request);
@@ -216,8 +196,9 @@ namespace Edgegap.Matchmaking
             Action<string, UnityWebRequest> onErrorDelegate
         )
         {
-            Post(
+            Request.Post(
                 $"{BaseUrl}/{PATH_GROUP_UP}",
+                AuthToken,
                 JsonConvert.SerializeObject(group),
                 (string response, UnityWebRequest request) =>
                 {
@@ -245,8 +226,9 @@ namespace Edgegap.Matchmaking
             Action<string, UnityWebRequest> onErrorDelegate
         )
         {
-            Get(
+            Request.Get(
                 $"{BaseUrl}/{PATH_GROUP_UP}/{groupID}",
+                AuthToken,
                 (string response, UnityWebRequest request) =>
                 {
                     try
@@ -273,8 +255,9 @@ namespace Edgegap.Matchmaking
             Action<string, UnityWebRequest> onErrorDelegate
         )
         {
-            Delete(
+            Request.Delete(
                 $"{BaseUrl}/{PATH_GROUP_UP}/{groupID}",
+                AuthToken,
                 (string response, UnityWebRequest request) =>
                 {
                     onSuccessDelegate(request);
@@ -290,8 +273,9 @@ namespace Edgegap.Matchmaking
             Action<string, UnityWebRequest> onErrorDelegate
         )
         {
-            Post(
+            Request.Post(
                 $"{BaseUrl}/{PATH_GROUP_UP}/{groupID}",
+                AuthToken,
                 JsonConvert.SerializeObject(member),
                 (string response, UnityWebRequest request) =>
                 {
@@ -320,8 +304,9 @@ namespace Edgegap.Matchmaking
             Action<string, UnityWebRequest> onErrorDelegate
         )
         {
-            Get(
+            Request.Get(
                 $"{BaseUrl}/{PATH_GROUP_UP}/{groupID}/members/{memberID}",
+                AuthToken,
                 (string response, UnityWebRequest request) =>
                 {
                     try
@@ -350,8 +335,9 @@ namespace Edgegap.Matchmaking
             Action<string, UnityWebRequest> onErrorDelegate
         )
         {
-            Patch(
+            Request.Patch(
                 $"{BaseUrl}/{PATH_GROUP_UP}/{groupID}/members/{memberID}",
+                AuthToken,
                 JsonConvert.SerializeObject(new KeyValuePair<string, bool>("is_ready", isReady)),
                 (string response, UnityWebRequest request) =>
                 {
@@ -380,8 +366,9 @@ namespace Edgegap.Matchmaking
             Action<string, UnityWebRequest> onErrorDelegate
         )
         {
-            Delete(
+            Request.Delete(
                 $"{BaseUrl}/{PATH_GROUP_UP}/{groupID}/members/{memberID}",
+                AuthToken,
                 (string response, UnityWebRequest request) =>
                 {
                     onSuccessDelegate(request);
@@ -389,198 +376,5 @@ namespace Edgegap.Matchmaking
                 onErrorDelegate
             );
         }
-
-        #region WebGL-friendly WebRequest
-        internal void Post(
-            string Url,
-            string requestBody,
-            Action<string, UnityWebRequest> onSuccessDelegate,
-            Action<string, UnityWebRequest> onErrorDelegate,
-            int requestAttemptsLeft = 3
-        )
-        {
-#if UNITY_2022_3_OR_NEWER
-            UnityWebRequest request = UnityWebRequest.Post(Url, requestBody, "application/json");
-#else
-            UnityWebRequest request = UnityWebRequest.Post(Url, requestBody);
-#endif
-            request.SetRequestHeader("Authorization", AuthToken);
-            request.SetRequestHeader("Content-Type", "application/json");
-            request.timeout = RequestTimeoutSeconds;
-
-            Parent.StartCoroutine(
-                _SendRequestEnumerator(
-                    request,
-                    onSuccessDelegate,
-                    (string error, UnityWebRequest req) =>
-                    {
-                        if (
-                            requestAttemptsLeft > 0
-                            && (req.responseCode == 429 || req.responseCode >= 500)
-                        )
-                        {
-                            L._Warn($"{error}, retries left: {requestAttemptsLeft}");
-                            Post(
-                                Url,
-                                requestBody,
-                                onSuccessDelegate,
-                                onErrorDelegate,
-                                requestAttemptsLeft - 1
-                            );
-                        }
-                        else
-                        {
-                            onErrorDelegate(error, req);
-                        }
-                    },
-                    requestAttemptsLeft > 0
-                )
-            );
-        }
-
-        internal void Patch(
-            string Url,
-            string requestBody,
-            Action<string, UnityWebRequest> onSuccessDelegate,
-            Action<string, UnityWebRequest> onErrorDelegate,
-            int requestAttemptsLeft = 3
-        )
-        {
-            UnityWebRequest request = UnityWebRequest.Put(Url, requestBody);
-            request.method = "PATCH";
-            request.SetRequestHeader("Authorization", AuthToken);
-            request.SetRequestHeader("Content-Type", "application/json");
-            request.timeout = RequestTimeoutSeconds;
-
-            Parent.StartCoroutine(
-                _SendRequestEnumerator(
-                    request,
-                    onSuccessDelegate,
-                    (string error, UnityWebRequest req) =>
-                    {
-                        if (
-                            requestAttemptsLeft > 0
-                            && (req.responseCode == 429 || req.responseCode >= 500)
-                        )
-                        {
-                            L._Warn($"{error}, retries left: {requestAttemptsLeft}");
-                            Patch(
-                                Url,
-                                requestBody,
-                                onSuccessDelegate,
-                                onErrorDelegate,
-                                requestAttemptsLeft - 1
-                            );
-                        }
-                        else
-                        {
-                            onErrorDelegate(error, req);
-                        }
-                    },
-                    requestAttemptsLeft > 0
-                )
-            );
-        }
-
-        internal void Get(
-            string Url,
-            Action<string, UnityWebRequest> onSuccessDelegate,
-            Action<string, UnityWebRequest> onErrorDelegate,
-            int requestAttemptsLeft = 1
-        )
-        {
-            UnityWebRequest request = UnityWebRequest.Get(Url);
-            request.SetRequestHeader("Authorization", AuthToken);
-            request.SetRequestHeader("Content-Type", "application/json");
-            request.timeout = RequestTimeoutSeconds;
-            Parent.StartCoroutine(
-                _SendRequestEnumerator(
-                    request,
-                    onSuccessDelegate,
-                    (string error, UnityWebRequest req) =>
-                    {
-                        if (
-                            requestAttemptsLeft > 0
-                            && (req.responseCode == 429 || req.responseCode >= 500)
-                        )
-                        {
-                            L._Warn($"{error}, retries left: {requestAttemptsLeft}");
-                            Get(Url, onSuccessDelegate, onErrorDelegate, requestAttemptsLeft - 1);
-                        }
-                        else
-                        {
-                            onErrorDelegate(error, req);
-                        }
-                    },
-                    requestAttemptsLeft > 0
-                )
-            );
-        }
-
-        internal void Delete(
-            string Url,
-            Action<string, UnityWebRequest> onSuccessDelegate,
-            Action<string, UnityWebRequest> onErrorDelegate,
-            int requestAttemptsLeft = 3
-        )
-        {
-            UnityWebRequest request = UnityWebRequest.Delete(Url);
-            request.SetRequestHeader("Authorization", AuthToken);
-            request.SetRequestHeader("Content-Type", "application/json");
-            request.timeout = RequestTimeoutSeconds;
-            Parent.StartCoroutine(
-                _SendRequestEnumerator(
-                    request,
-                    onSuccessDelegate,
-                    (string error, UnityWebRequest req) =>
-                    {
-                        if (
-                            requestAttemptsLeft > 0
-                            && (req.responseCode == 429 || req.responseCode >= 500)
-                        )
-                        {
-                            L._Warn($"{error}, retries left: {requestAttemptsLeft}");
-                            Delete(
-                                Url,
-                                onSuccessDelegate,
-                                onErrorDelegate,
-                                requestAttemptsLeft - 1
-                            );
-                        }
-                        else
-                        {
-                            onErrorDelegate(error, req);
-                        }
-                    },
-                    requestAttemptsLeft > 0
-                )
-            );
-        }
-
-        internal IEnumerator _SendRequestEnumerator(
-            UnityWebRequest request,
-            Action<string, UnityWebRequest> onSuccessDelegate,
-            Action<string, UnityWebRequest> onErrorDelegate,
-            bool backoff = false
-        )
-        {
-            if (backoff)
-                yield return new WaitForSeconds(BackoffSeconds());
-
-            yield return request.SendWebRequest();
-
-            if (request.result != UnityWebRequest.Result.Success)
-            {
-                onErrorDelegate($"HTTP {request.responseCode}: {request.error}", request);
-            }
-            else
-            {
-                string stringResponse =
-                    request.downloadHandler == null ? "" : request.downloadHandler.text;
-                onSuccessDelegate(stringResponse, request);
-            }
-        }
-        #endregion
     }
 }
-

@@ -23,7 +23,7 @@ namespace Edgegap.Matchmaking
         public string? TicketID;
 
         [JsonProperty("assignment")]
-        public AssignmentDTO? Assignment;
+        public DeploymentDTO? Assignment;
 
         [JsonProperty("team_id")]
         public string? TeamID;
@@ -42,7 +42,7 @@ namespace Edgegap.Matchmaking
 
 #nullable enable
         [JsonProperty("assignment")]
-        public AssignmentDTO? Assignment;
+        public DeploymentDTO? Assignment;
 
         [JsonProperty("team_id")]
         public string? TeamID;

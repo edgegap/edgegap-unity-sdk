@@ -1,73 +1,48 @@
-# Edgegap Unity Matchmaking SDK
+# Edgegap Unity SDK
 
-[Follow our Getting Started guide first, then explore our Matchmaking Scenarios for inspiration.](https://docs.edgegap.com/learn/matchmaking/getting-started)
+This SDK is an optional starter kit for Unity users, which can be extended and customized later.
+- [Getting Started With Matchmaking](https://docs.edgegap.com/unity/matchmaking)
+- [Getting Started With Server Browser](https://docs.edgegap.com/unity/server-browser) (video coming soon)
 
 [![Watch the video](https://img.youtube.com/vi/HxtvzvJ1FTk/0.jpg)](https://www.youtube.com/watch?v=HxtvzvJ1FTk)
 
-This plugin has been tested, and supports Unity versions 2021.3.0f1+, including all LTS releases, and Unity 6.
+This plugin has been tested, and supports Unity versions 2021.3.0f1+, including Unity 6 LTS. This plugin is provided 100% free of charge, under Terms and Conditions of Free Tier.
 
-This plugin is intended to simplify integration of Matchmaking through pre-defined set of SDK methods and example client & server runtime handler scripts.
+## Requirements
 
-## Install With Git (recommended)
+Install a Git Client, for example [git-scm](https://git-scm.com/). A git client is needed for Unity to download and install this package automatically. You will not need to use git directly once it's installed.
 
-### Benefits
-
-- Installing our plugin this way will ensure you get the freshest updates the moment they come out, see [the update guide](#update-the-plugin-in-unity).
-
-### Caveats
-
-- Requirement: functioning git client installed, for example [git-scm](https://git-scm.com/).
-
-### Instructions
+## Installation
 
 1. Open your Unity project,
-2. Select toolbar option **Window** -> **Package Manager**,
+2. Select toolbar option **Window** -> **Package Management** -> **Package Manager**,
 3. Click the **+** icon and select **Add package from git URL...**,
-4. Input the following URL `https://github.com/edgegap/edgegap-unity-matchmaking-sdk.git`,
-5. Click **Add** and wait for the Unity Package Manager to complete the installation.
+4. Input the URL of our SDK when prompted:
 
-## Install via ZIP archive
+```
+https://github.com/edgegap/edgegap-unity-sdk.git
+```
 
-### Benefits
+5. Click **Add** and wait until installation is completed.
 
-- Slightly easier as no git client is required.
+## Verified Sources
 
-### Caveats
+Besides this repository:
+- [OpenUPM source](https://openupm.com/packages/com.edgegap.unity-sdk/).
 
-- Installing our plugin this way will require you to manually replace plugin contents if you [wish to update it](#update-the-plugin-in-unity),
-- The newtonsoft package (dependency) version required may not be compatible with your project if you're already using an older version of this package.
+Do not trust unverified sources!
 
-### Instructions
+## Update Package
 
-1. Select toolbar option **Window** -> **Package Manager**,
-2. Click the **+** icon and select **Add package by name...**,
-3. Input the name `com.unity.nuget.newtonsoft-json` and wait for the Unity Package Manager to complete the installation.,
-4. Back to this github project - make sure you're on the `main` branch,
-5. Click **<> Code**, then **Download ZIP**,
-6. Paste the contents of the unzipped archive in your `Assets` folder within Unity project root.
+Navigate to Edgegap SDK in Unity Package Manager and click **Update**.
 
-## Other Sources
+> [!WARNING]
+> **Imported Samples are not updated automatically!** Back up any custom property values, delete the sample scripts used in your scene currently and re-import samples.
 
-This is the only official distribution channel for this SDK, do not trust unverified sources!
+> [!NOTE]
+> Some releases may contain breaking changes. This will be indicated by a new MAJOR version.
 
-## Plugin Usage
-
-[Follow our Getting Started guide first, then explore our Matchmaking Scenarios for inspiration.](https://docs.edgegap.com/learn/matchmaking/getting-started)
-
-### Import Simple Example
-
-1. Find this package in Unity Package Manager window.
-2. Open the `Samples` tab.
-3. Click on **Import** next to **Simple Example**.
-4. Locate sample files in your project `Assets/Samples/Edgegap Matchmaking SDK/{version}/Simple Example`.
-5. Create an Empty GameObject in your scene and attach `MatchmakingClientHandlerExample.cs` script.
-6. Configure `BaseUrl` and `AuthToken` values from dashboard.
-
-### Usage Requirements
-
-To take full advantage of our Unity Matchmaking service, you will need to [Create an Edgegap Free Tier account](https://app.edgegap.com/auth/register). Our Free Tier let's you test and explore all of Matchmaking features for free, no credit card required!
-
-### Troubleshooting
+## Troubleshooting
 
 > Unity Editor shows `[Package Manager Window] Error adding package: https://github.com/edgegap/edgegap-unity-matchmaking-sdk.git`
 
@@ -83,27 +58,6 @@ To take full advantage of our Unity Matchmaking service, you will need to [Creat
 1. In your Unity Editor, navigate to **Edit / Preferences / External Tools / Generate .csproj files**.
 2. Make sure you have enabled **Git packages**.
 3. Click **Regenerate project files**.
-
-## Update the Plugin in Unity
-
-Before updating, take note of your `Client Version` property on `MatchmakingClient.cs` to ensure future compatibility.
-
-Depending on your installation method:
-
-- If you installed with git, locate it in Unity's **Package Manager** window and click **Update**. Wait for the process to complete and you're good to go!
-- If you installed via ZIP archive, you will need to remove the previous copy, then download the new version.
-
-### Migrating Scenes
-
-1. **Replace any missing scripts in your scenes!**
-
-   - Verify validity of your `MatchmakingClient.cs` properties like `BaseUrl` and `AuthToken`.
-
-2. **Increase `Client Version` property value of your `MatchmakingClient.cs` script!**
-
-   - This will prevent loading outdated tickets from cache when matchmaking resumed.
-
-3. You may want to modify your client & server handler scripts.
 
 ## For Plugin Developers
 
