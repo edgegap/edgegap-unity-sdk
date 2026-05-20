@@ -210,7 +210,7 @@ namespace Edgegap.Matchmaking
                     }
                     catch (Exception e)
                     {
-                        L._Error(
+                        L.Error(
                             $"Couldn't parse assignment, consider updating Matchmaking SDK. {e.Message}"
                         );
                         throw;
@@ -239,7 +239,7 @@ namespace Edgegap.Matchmaking
                     }
                     catch (Exception e)
                     {
-                        L._Error(
+                        L.Error(
                             $"Couldn't parse details, consider updating Matchmaking SDK. {e.Message}"
                         );
                         throw;
@@ -287,7 +287,7 @@ namespace Edgegap.Matchmaking
                     }
                     catch (Exception e)
                     {
-                        L._Error(
+                        L.Error(
                             $"Couldn't parse assignment, consider updating Matchmaking SDK. {e.Message}"
                         );
                         throw;
@@ -317,7 +317,7 @@ namespace Edgegap.Matchmaking
                     }
                     catch (Exception e)
                     {
-                        L._Error(
+                        L.Error(
                             $"Couldn't parse details, consider updating Matchmaking SDK. {e.Message}"
                         );
                         throw;
@@ -349,7 +349,7 @@ namespace Edgegap.Matchmaking
                     }
                     catch (Exception e)
                     {
-                        L._Error(
+                        L.Error(
                             $"Couldn't parse assignment, consider updating Matchmaking SDK. {e.Message}"
                         );
                         throw;
