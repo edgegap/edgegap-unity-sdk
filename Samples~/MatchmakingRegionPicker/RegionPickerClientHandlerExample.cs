@@ -6,6 +6,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
+using L = Edgegap.Logger;
 using MyTicketsAttributes = Edgegap.Matchmaking.LatenciesAttributesDTO;
 using MyTicketsRequestDTO = Edgegap.Matchmaking.SimpleTicketsRequestDTO;
 
@@ -65,23 +66,23 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
 
             if (ScrollListContainer == null)
             {
-                Debug.Log("RP ClientHandler | No Scroll List Container provided, using default.");
+                L.Log("MM ClientHandler | No Scroll List Container provided, using default.");
                 ScrollListContainer = GameObject.Find(ScrollListContainerDefaultPath);
 
                 if (ScrollListContainer == null)
                 {
-                    Debug.LogWarning($"RP ClientHandler | Unable to find default component {ScrollListContainerDefaultPath} in scene.");
+                    L.Warn($"MM ClientHandler | Unable to find default component {ScrollListContainerDefaultPath} in scene.");
                 }
             }
 
             if (DisconnectButton == null)
             {
-                Debug.Log("RP ClientHandler | No Disconnect Button provided, using default.");
+                L.Log("MM ClientHandler | No Disconnect Button provided, using default.");
                 DisconnectButton = GameObject.Find(DisconnectButtonDefaultPath);
 
                 if (DisconnectButton == null)
                 {
-                    Debug.LogWarning($"RP ClientHandler | Unable to find default component {DisconnectButtonDefaultPath} in scene.");
+                    L.Warn($"MM ClientHandler | Unable to find default component {DisconnectButtonDefaultPath} in scene.");
                 }
                 else
                 {
@@ -92,18 +93,18 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
 
             if (StatusDisplay == null)
             {
-                Debug.Log("RP ClientHandler | No Status Display provided, using default.");
+                L.Log("MM ClientHandler | No Status Display provided, using default.");
                 StatusDisplay = GameObject.Find(StatusDisplayDefaultPath).GetComponent<Text>();
 
                 if (StatusDisplay == null)
                 {
-                    Debug.LogWarning($"RP ClientHandler | Unable to find default component {StatusDisplayDefaultPath} in scene.");
+                    L.Warn($"MM ClientHandler | Unable to find default component {StatusDisplayDefaultPath} in scene.");
                 }
             }
 
             if (HubBtnPrefab == null)
             {
-                Debug.Log("RP ClientHandler | No Hub Button Prefab provided, using default.");
+                L.Log("MM ClientHandler | No Hub Button Prefab provided, using default.");
                 string guid = AssetDatabase.FindAssets($"t:Script {nameof(RegionPickerClientHandlerExample)}")[0];
                 string currentAssetPath = AssetDatabase.GUIDToAssetPath(guid);
                 string hubBtnPrefabDefaultPath = currentAssetPath.Split(nameof(RegionPickerClientHandlerExample))[0] + "BeaconHubButton.prefab";
@@ -112,7 +113,7 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
 
                 if (HubBtnPrefab == null)
                 {
-                    Debug.LogWarning($"RP ClientHandler | Unable to find default prefab {hubBtnPrefabDefaultPath} in assets.");
+                    L.Warn($"MM ClientHandler | Unable to find default prefab {hubBtnPrefabDefaultPath} in assets.");
                 }
             }
         }
@@ -146,28 +147,63 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
                 {
                     // todo update UI
 
-                    if (ScrollListContainer.transform.childCount > 0)
-                    {
-                        StatusDisplay.text = "";
+                    StatusDisplay.text = "Fetching beacons...";
 
-                        foreach (Transform child in ScrollListContainer.transform)
+                    MatchmakingClient.Beacons(
+                        (BeaconsResponseDTO beacons) =>
                         {
-                            child.gameObject.SetActive(true);
-                        }
-                    }
-                    else
-                    {
-                        StatusDisplay.text = "Fetching beacons...";
+                            MatchmakingClient.MeasureBeaconsRoundTripTime(
+                                beacons.Beacons,
+                                (Dictionary<string, float> pings) =>
+                                {
+                                    StatusDisplay.text = "";
 
-                        MatchmakingClient.Beacons(
-                            (BeaconsResponseDTO beacons) =>
-                            {
-                                MatchmakingClient.MeasureBeaconsRoundTripTime(
-                                    beacons.Beacons,
-                                    (Dictionary<string, float> pings) =>
+                                    if (ScrollListContainer.transform.childCount > 0)
                                     {
-                                        StatusDisplay.text = "";
+                                        Dictionary<string, float> temp = pings;
 
+                                        foreach (Transform child in ScrollListContainer.transform)
+                                        {
+                                            child.gameObject.SetActive(true);
+                                            string label = child.gameObject.GetComponent<BeaconHubButton>().BtnLabel.text;
+
+                                            if (pings.TryGetValue(label, out float p))
+                                            {
+                                                child.gameObject.GetComponent<BeaconHubButton>().SetLatencyIcon(p);
+                                                temp.Remove(label);
+                                            }
+                                            else
+                                            {
+                                                child.gameObject.GetComponent<BeaconHubButton>().DisableLatencyBtn();
+                                            }
+                                        }
+
+                                        foreach (KeyValuePair<string, float> entry in temp)
+                                        {
+                                            GameObject btn = Instantiate(HubBtnPrefab, ScrollListContainer.transform);
+                                            btn.GetComponent<BeaconHubButton>().BtnLabel.text = entry.Key;
+                                            btn.GetComponent<BeaconHubButton>().SetLatencyIcon(entry.Value);
+                                            btn.GetComponent<Button>().onClick.AddListener(() => OnHubBtnClick(entry.Key, entry.Value));
+                                        }
+
+                                        BeaconHubButton[] btns = ScrollListContainer.GetComponentsInChildren<BeaconHubButton>();
+                                        int i = 0;
+
+                                        foreach (BeaconHubButton b in btns.OrderBy(b => b.GetPing()))
+                                        {
+                                            if (b.GetPing() == -1)
+                                            {
+                                                b.transform.SetAsLastSibling();
+                                            }
+                                            else
+                                            {
+                                                b.transform.SetSiblingIndex(i);
+                                                ++i;
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
                                         foreach (KeyValuePair<string, float> entry in pings.OrderBy(key => key.Value))
                                         {
                                             GameObject btn = Instantiate(HubBtnPrefab, ScrollListContainer.transform);
@@ -176,21 +212,21 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
                                             btn.GetComponent<Button>().onClick.AddListener(() => OnHubBtnClick(entry.Key, entry.Value));
                                         }
                                     }
-                                );
-                            },
-                            (string error, UnityWebRequest request) =>
-                            {
-                                // todo handle beacon downtime, create tickets without beacons?
-                                StatusDisplay.text = "Beacon error, see logs";
-                                Debug.Log($"RP ClientHandler |  Beacon error.\n{error}");
-                            }
-                        );
-                    }
+                                }
+                            );
+                        },
+                        (string error, UnityWebRequest request) =>
+                        {
+                            // todo handle beacon downtime, create tickets without beacons?
+                            StatusDisplay.text = "Beacon error, see logs";
+                            L.Log($"MM ClientHandler |  Beacon error.\n{error}");
+                        }
+                    );
                 }
                 else if (action == ObservableActionType.Error || message == "unhealthy")
                 {
                     // todo handle outage/maintenance
-                    Debug.LogError($"RP ClientHandler | Service is unhealthy.\n{monitor.Current}");
+                    L.Error($"MM ClientHandler | Service is unhealthy.\n{monitor.Current}");
                     MatchmakingClient.StopMatchmaking();
                 }
             },
@@ -241,8 +277,8 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
 
                     // todo join game on pre-defined game port
                     StatusDisplay.text = "Host assigned, joining game";
-                    Debug.Log(
-                        $"RP ClientHandler | Joining game: {assignment.Current.Assignment.Ports["gameport"].Link}"
+                    L.Log(
+                        $"MM ClientHandler | Joining game: {assignment.Current.Assignment.Ports["gameport"].Link}"
                     );
 
                     DisconnectButton.SetActive(true);
@@ -293,7 +329,7 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
             (List<TicketResponseDTO> memberAssignments, UnityWebRequest request) =>
             {
                 // todo send assignment IDs to group members to track their tickets
-                Debug.Log($"RP ClientHandler | Member assignemnts: {memberAssignments}");
+                L.Log($"MM ClientHandler | Member assignemnts: {memberAssignments}");
             },
             abandon
         );
@@ -322,7 +358,7 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
     {
         DisconnectButton.SetActive(false);
         StatusDisplay.text = "Disconnecting from server, returning to matchmaking";
-        Debug.Log("RP ClientHandler | Disconnecting from server, returning to matchmaking.");
+        L.Log("MM ClientHandler | Disconnecting from server, returning to matchmaking.");
         StopMatchmaking();
     }
 }

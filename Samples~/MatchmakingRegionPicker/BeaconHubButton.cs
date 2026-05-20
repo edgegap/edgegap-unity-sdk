@@ -95,4 +95,13 @@ public class BeaconHubButton : MonoBehaviour
             GetComponent<Button>().interactable = false;
         }
     }
+
+    public void DisableLatencyBtn()
+    {
+        _ping = -1;
+        GoodLatencyIcon.SetActive(false);
+        MidLatencyIcon.SetActive(false);
+        PoorLatencyIcon.SetActive(false);
+        GetComponent<Button>().interactable = false;
+    }
 }
