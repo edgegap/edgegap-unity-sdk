@@ -198,7 +198,10 @@ public class ServerBrowserServerHandler : MonoBehaviour
 
     public void OnApplicationQuit()
     {
-        ServerAgent.DeleteInstance();
+        if (enabled)
+        {
+            ServerAgent.DeleteInstance();
+        }
     }
 
     public void SelfStopDeployment()

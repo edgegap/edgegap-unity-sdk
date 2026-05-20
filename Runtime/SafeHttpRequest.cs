@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
 using Random = UnityEngine.Random;
@@ -139,50 +140,56 @@ namespace Edgegap
                     onSuccessDelegate,
                     (string error, UnityWebRequest req) =>
                     {
-                        bool retryAfterHeader = req.GetResponseHeaders()
-                            .TryGetValue("Retry-After", out var retryAfter);
+                        Dictionary<string, string> responseHeaders = req.GetResponseHeaders();
+                        if (responseHeaders is null)
+                        {
+                            onErrorDelegate(error, req);
+                            return;
+                        }
+
+                        bool retryAfterHeader = responseHeaders.TryGetValue(
+                            "Retry-After",
+                            out var retryAfter
+                        );
                         if (
-                            retryParameters.RemainingAttempts > 0
-                            && (
-                                retryAfterHeader
-                                || req.responseCode == 429
-                                || req.responseCode >= 500
+                            retryParameters.RemainingAttempts <= 0
+                            || (
+                                retryAfterHeader == false
+                                && req.responseCode != 429
+                                && req.responseCode < 500
                             )
                         )
                         {
-                            L.Warn(
-                                $"Retrying ({retryParameters.RemainingAttempts}/{retryParameters.MaxAttempts}) {request.method} {request.url}.\n{error}"
-                            );
-                            retryParameters.RemainingAttempts--;
-                            if (retryAfterHeader)
+                            onErrorDelegate(error, req);
+                            return;
+                        }
+
+                        L.Warn(
+                            $"Retrying ({retryParameters.RemainingAttempts}/{retryParameters.MaxAttempts}) {request.method} {request.url}.\n{error}"
+                        );
+                        retryParameters.RemainingAttempts--;
+                        if (retryAfterHeader)
+                        {
+                            try
                             {
-                                try
+                                if (DateTime.TryParse(retryAfter, out var retryAfterDateTime))
                                 {
-                                    if (DateTime.TryParse(retryAfter, out var retryAfterDateTime))
-                                    {
-                                        retryParameters.BackoffSeconds = () =>
-                                            (float)
-                                                DateTime
-                                                    .Now.Subtract(retryAfterDateTime)
-                                                    .TotalSeconds + (0.1f * Random.value);
-                                    }
-                                }
-                                catch (Exception e)
-                                {
-                                    L.Error($"Error parsing Retry-After header: {e.Message}");
+                                    retryParameters.BackoffSeconds = () =>
+                                        (float)
+                                            DateTime.Now.Subtract(retryAfterDateTime).TotalSeconds
+                                        + (0.1f * Random.value);
                                 }
                             }
-                            else
+                            catch (Exception e)
                             {
-                                retryParameters.BackoffSeconds =
-                                    RetryParameters.DefaultBackoffSeconds;
+                                L.Error($"Error parsing Retry-After header: {e.Message}");
                             }
-                            onRetryableDelegate(error, req, retryParameters);
                         }
                         else
                         {
-                            onErrorDelegate(error, req);
+                            retryParameters.BackoffSeconds = RetryParameters.DefaultBackoffSeconds;
                         }
+                        onRetryableDelegate(error, req, retryParameters);
                     },
                     retryParameters
                 )
