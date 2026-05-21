@@ -29,6 +29,11 @@
       "displayName": "Matchmaking - Simple Example",
       "description": "Get started with minimal matchmaking example.",
       "path": "Samples~/MatchmakingSimple"
+    },
+    {
+      "displayName": "Matchmaking - Region Picker UI",
+      "description": "Explore UI integration with manual region selection.",
+      "path": "Samples~/MatchmakingRegionPicker"
     }
   ],
   "dependencies": {
