@@ -160,17 +160,17 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
 
                                     if (ScrollListContainer.transform.childCount > 0)
                                     {
-                                        Dictionary<string, float> temp = pings;
+                                        Dictionary<string, float> newPings = new Dictionary<string, float>(pings);
 
                                         foreach (Transform child in ScrollListContainer.transform)
                                         {
                                             child.gameObject.SetActive(true);
                                             string label = child.gameObject.GetComponent<BeaconHubButton>().BtnLabel.text;
 
-                                            if (pings.TryGetValue(label, out float p))
+                                            if (pings.ContainsKey(label))
                                             {
-                                                child.gameObject.GetComponent<BeaconHubButton>().SetLatencyIcon(p);
-                                                temp.Remove(label);
+                                                child.gameObject.GetComponent<BeaconHubButton>().SetLatencyIcon(pings[label]);
+                                                newPings.Remove(label);
                                             }
                                             else
                                             {
@@ -178,7 +178,7 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
                                             }
                                         }
 
-                                        foreach (KeyValuePair<string, float> entry in temp)
+                                        foreach (KeyValuePair<string, float> entry in newPings)
                                         {
                                             GameObject btn = Instantiate(HubBtnPrefab, ScrollListContainer.transform);
                                             btn.GetComponent<BeaconHubButton>().BtnLabel.text = entry.Key;
@@ -187,19 +187,11 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
                                         }
 
                                         BeaconHubButton[] btns = ScrollListContainer.GetComponentsInChildren<BeaconHubButton>();
-                                        int i = 0;
+                                        btns.OrderBy(x => x.GetPing() == -1 ? 1 : 0).ThenBy(x => x.GetPing());
 
-                                        foreach (BeaconHubButton b in btns.OrderBy(b => b.GetPing()))
+                                        for (int i = 0; i < btns.Length; ++i)
                                         {
-                                            if (b.GetPing() == -1)
-                                            {
-                                                b.transform.SetAsLastSibling();
-                                            }
-                                            else
-                                            {
-                                                b.transform.SetSiblingIndex(i);
-                                                ++i;
-                                            }
+                                            b.transform.SetSiblingIndex(i);
                                         }
                                     }
                                     else
@@ -345,7 +337,7 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
 
     public void OnHubBtnClick(string cityName, float ping)
     {
-        MyTicketsRequestDTO ticket = new(new Dictionary<string, float> { { cityName, ping } });
+        MyTicketsRequestDTO ticket = new MyTicketsRequestDTO(new Dictionary<string, float> { { cityName, ping } });
         MatchmakingClient.StartMatchmaking(ticket);
 
         foreach (Transform child in ScrollListContainer.transform)
