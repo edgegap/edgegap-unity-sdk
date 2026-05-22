@@ -190,7 +190,7 @@ namespace Edgegap.Matchmaking
             );
         }
 
-        public void CreateGroupAsync(
+        public void CreateGroup(
             T group,
             Action<GroupUpResponseDTO, UnityWebRequest> onSuccessDelegate,
             Action<string, UnityWebRequest> onErrorDelegate
@@ -220,7 +220,7 @@ namespace Edgegap.Matchmaking
             );
         }
 
-        public void GetGroupAsync(
+        public void GetGroup(
             string groupID,
             Action<GroupDetailResponse, UnityWebRequest> onSuccessDelegate,
             Action<string, UnityWebRequest> onErrorDelegate
@@ -249,7 +249,7 @@ namespace Edgegap.Matchmaking
             );
         }   
 
-        public void DeleteGroupAsync(
+        public void DeleteGroup(
             string groupID,
             Action<UnityWebRequest> onSuccessDelegate,
             Action<string, UnityWebRequest> onErrorDelegate
@@ -266,7 +266,7 @@ namespace Edgegap.Matchmaking
             );
         }
 
-        public void CreateGroupMemberAsync(
+        public void CreateGroupMember(
             T member,
             string groupID,
             Action<GroupUpResponseDTO, UnityWebRequest> onSuccessDelegate,
@@ -297,7 +297,7 @@ namespace Edgegap.Matchmaking
             );
         }
 
-        public void GetGroupMemberDetailsAsync(
+        public void GetGroupMemberDetails(
             string groupID,
             string memberID,
             Action<GroupUpResponseDTO, UnityWebRequest> onSuccessDelegate,
@@ -327,7 +327,7 @@ namespace Edgegap.Matchmaking
             );
         }  
 
-        public void UpdateGroupMemberAsync(
+        public void UpdateGroupMember(
             string groupID,
             string memberID,
             bool isReady,
@@ -359,7 +359,7 @@ namespace Edgegap.Matchmaking
             );
         }
 
-        public void DeleteGroupMemberAsync(
+        public void DeleteGroupMember(
             string groupID,
             string memberID,
             Action<UnityWebRequest> onSuccessDelegate,
