@@ -191,7 +191,7 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
 
                                         for (int i = 0; i < btns.Length; ++i)
                                         {
-                                            b.transform.SetSiblingIndex(i);
+                                            btns[i].transform.SetSiblingIndex(i);
                                         }
                                     }
                                     else
