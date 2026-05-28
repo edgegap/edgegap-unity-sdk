@@ -216,7 +216,7 @@ namespace Edgegap
             if (request.result != UnityWebRequest.Result.Success)
             {
                 onErrorDelegate(
-                    $"HTTP {request.responseCode}: {request.error}\n{request.downloadHandler.text}",
+                    $"HTTP {request.responseCode}: {request.error}\n{request.downloadHandler?.text}",
                     request
                 );
             }

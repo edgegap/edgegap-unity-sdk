@@ -1,13 +1,17 @@
-using System.Collections.Generic;
 using Edgegap;
 using Edgegap.Matchmaking;
+using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Networking;
+using MyGroupUpRequestDTO = Edgegap.Matchmaking.SimpleGroupUpRequestDTO;
 using MyTicketsAttributes = Edgegap.Matchmaking.LatenciesAttributesDTO;
 using MyTicketsRequestDTO = Edgegap.Matchmaking.SimpleTicketsRequestDTO;
 
 // todo replace SimpleTicketsRequestDTO with CustomTicketsRequestDTO
 // todo replace LatenciesAttributesDTO with CustomTicketsAttributes
+// todo replace SimpleGroupUpRequestDTO with CustomGroupUpRequestDTO
+
 public class MatchmakingClientHandler : MonoBehaviour
 {
     public static MatchmakingClientHandler Instance { get; private set; }
@@ -30,7 +34,7 @@ public class MatchmakingClientHandler : MonoBehaviour
     public bool LogAssignmentUpdates = true;
     public bool LogPollingUpdates = false;
 
-    public Client<MyTicketsRequestDTO, MyTicketsAttributes> MatchmakingClient;
+    public Client<MyTicketsRequestDTO, MyTicketsAttributes, MyGroupUpRequestDTO> MatchmakingClient;
 
     public void Awake()
     {
@@ -49,7 +53,7 @@ public class MatchmakingClientHandler : MonoBehaviour
     public void Start()
     {
         // configure Matchmaking
-        MatchmakingClient = new Client<MyTicketsRequestDTO, MyTicketsAttributes>(
+        MatchmakingClient = new Client<MyTicketsRequestDTO, MyTicketsAttributes, MyGroupUpRequestDTO>(
             this,
             BaseUrl,
             AuthToken,
@@ -136,6 +140,37 @@ public class MatchmakingClientHandler : MonoBehaviour
                         $"joining game: {assignment.Current.Assignment.Ports["gameport"].Link}"
                     );
                 }
+            },
+            // handle group assignment
+            (
+                Observable<GroupUpResponseDTO> group,
+                ObservableActionType action,
+                string message
+            ) => 
+            {
+                if (
+                    action == ObservableActionType.Update
+                    && (
+                        message.Contains("received")
+                        || message.Contains("updated")
+                        || message.Contains("abandon")
+                    )
+                )
+                {
+                    // todo update UI
+                }
+
+                if (
+                    action == ObservableActionType.Update
+                    && message.Contains("updated")
+                    && group.Current.Status == "HOST_ASSIGNED"
+                )
+                {
+                    // todo join game on pre-defined game port
+                    Debug.Log(
+                        $"joining game: {group.Current.Assignment.Ports["gameport"].Link}"
+                    );
+                }
             }
         );
     }
@@ -159,23 +194,13 @@ public class MatchmakingClientHandler : MonoBehaviour
         MatchmakingClient.StartMatchmaking(ticket);
     }
 
-    // group members need to share tickets to group host to start matchmaking
     public void StartGroupMatchmaking(
-        MyTicketsRequestDTO hostTicket,
-        List<MyTicketsRequestDTO> memberTickets,
+        MyGroupUpRequestDTO group,
         bool abandon = false
     )
     {
-        MatchmakingClient.StartGroupMatchmaking(
-            hostTicket,
-            memberTickets,
-            (List<TicketResponseDTO> memberAssignments, UnityWebRequest request) =>
-            {
-                // todo send assignment IDs to group members to track their tickets
-                Debug.Log($"member assignemnts: {memberAssignments}");
-            },
-            abandon
-        );
+        group.IsReady = true;
+        MatchmakingClient.CreateGroup(group, abandon);
     }
 
     public void StopMatchmaking()

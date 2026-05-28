@@ -103,7 +103,7 @@ namespace Edgegap.Matchmaking
             return JsonConvert.SerializeObject(this);
         }
     }
-    
+
     public abstract class GroupUpRequestDTO<A> : TicketsRequestDTO<A>
     {
         [JsonProperty("is_ready")]
@@ -114,6 +114,8 @@ namespace Edgegap.Matchmaking
         {
             IsReady = isReady;
         }
+
+        public abstract void SetBeacons(Dictionary<string, float> latencyBeacons);
     }
 
     public class SimpleGroupUpRequestDTO : GroupUpRequestDTO<LatenciesAttributesDTO>
@@ -122,6 +124,14 @@ namespace Edgegap.Matchmaking
             : base("simple-example")
         {
             Attributes = new LatenciesAttributesDTO(latencyBeacons);
+        }
+
+        public SimpleGroupUpRequestDTO()
+            : base("simple-example") { }
+
+        public override void SetBeacons(Dictionary<string, float> latencyBeacons)
+        {
+            Attributes.Beacons = latencyBeacons;
         }
     }
 }
