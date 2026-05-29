@@ -336,10 +336,13 @@ namespace Edgegap.Matchmaking
             Action<string, UnityWebRequest> onErrorDelegate
         )
         {
+            Dictionary<string, bool> body = new Dictionary<string, bool>();
+            body["is_ready"] = isReady;
+
             Request.Patch(
                 $"{BaseUrl}/{PATH_GROUP_UP}/{groupID}/members/{memberID}",
                 AuthToken,
-                JsonConvert.SerializeObject(new KeyValuePair<string, bool>("is_ready", isReady)),
+                JsonConvert.SerializeObject(body),
                 (string response, UnityWebRequest request) =>
                 {
                     try
