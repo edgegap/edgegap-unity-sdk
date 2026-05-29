@@ -451,7 +451,6 @@ namespace Edgegap.Matchmaking
         #endregion
 
         #region Internals
-
         internal void StartPollingAssignment(int consecutiveErrors = 0)
         {
             if (!Polling)
@@ -468,22 +467,14 @@ namespace Edgegap.Matchmaking
                 Group._Notify($"polling [{consecutiveErrors + 1}/{MaxConsecutivePollingErrors}]");
             }
 
-            MatchmakingApi.GetGroup(
+            MatchmakingApi.GetGroupMember(
                 Group.Current.GroupID,
-                (GroupDetailResponse group, UnityWebRequest request) =>
+                Group.Current.MemberID,
+                (GroupUpResponseDTO group, UnityWebRequest request) =>
                 {
                     if (Group.Current is not null && group.Status != Group.Current.Status)
                     {
-                        GroupUpResponseDTO updatedGroup = new GroupUpResponseDTO();
-                        updatedGroup.MemberID = Group.Current.MemberID;
-                        updatedGroup.GroupID = Group.Current.GroupID;
-                        updatedGroup.IsReady = Group.Current.IsReady;
-                        updatedGroup.Status = group.Status;
-                        updatedGroup.TicketID = Group.Current.TicketID;
-                        updatedGroup.Assignment = group.Assignment;
-                        updatedGroup.TeamID = group.TeamID;
-
-                        Group._Update(updatedGroup, $"updated [{updatedGroup.Status}]");
+                        Group._Update(group, $"updated [{group.Status}]");
 
                         if (
                             Group.Current.Status == "HOST_ASSIGNED"

@@ -212,7 +212,7 @@ namespace Edgegap.Matchmaking
                     catch (Exception e)
                     {
                         L.Error(
-                            $"Couldn't parse assignment, consider updating Matchmaking SDK. {e.Message}"
+                            $"Couldn't parse group, consider updating Matchmaking SDK. {e.Message}"
                         );
                         throw;
                     }
@@ -275,21 +275,21 @@ namespace Edgegap.Matchmaking
         )
         {
             Request.Post(
-                $"{BaseUrl}/{PATH_GROUP_UP}/{groupID}",
+                $"{BaseUrl}/{PATH_GROUP_UP}/{groupID}/members",
                 AuthToken,
                 JsonConvert.SerializeObject(member),
                 (string response, UnityWebRequest request) =>
                 {
                     try
                     {
-                        GroupUpResponseDTO assignment =
+                        GroupUpResponseDTO member =
                             JsonConvert.DeserializeObject<GroupUpResponseDTO>(response);
-                        onSuccessDelegate(assignment, request);
+                        onSuccessDelegate(member, request);
                     }
                     catch (Exception e)
                     {
                         L.Error(
-                            $"Couldn't parse assignment, consider updating Matchmaking SDK. {e.Message}"
+                            $"Couldn't parse member, consider updating Matchmaking SDK. {e.Message}"
                         );
                         throw;
                     }
@@ -344,14 +344,14 @@ namespace Edgegap.Matchmaking
                 {
                     try
                     {
-                        GroupUpResponseDTO assignment =
+                        GroupUpResponseDTO member =
                             JsonConvert.DeserializeObject<GroupUpResponseDTO>(response);
-                        onSuccessDelegate(assignment, request);
+                        onSuccessDelegate(member, request);
                     }
                     catch (Exception e)
                     {
                         L.Error(
-                            $"Couldn't parse assignment, consider updating Matchmaking SDK. {e.Message}"
+                            $"Couldn't parse member, consider updating Matchmaking SDK. {e.Message}"
                         );
                         throw;
                     }
