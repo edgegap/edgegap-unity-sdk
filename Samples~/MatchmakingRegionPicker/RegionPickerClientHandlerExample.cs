@@ -338,18 +338,9 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
         StopMatchmaking();
     }
 
-    public void StartMatchmaking(MyTicketsRequestDTO ticket)
+    public void StartMatchmaking(Dictionary<string, float> pings)
     {
-        MatchmakingClient.StartMatchmaking(ticket);
-    }
-
-    public void StartGroupMatchmaking(
-        MyGroupUpRequestDTO group,
-        bool abandon = false
-    )
-    {
-        group.IsReady = true;
-        MatchmakingClient.CreateGroup(group, abandon);
+        MatchmakingClient.CreateGroup(new MyGroupUpRequestDTO(pings, true));
     }
 
     public void StopMatchmaking()
@@ -360,8 +351,7 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
 
     public void OnHubBtnClick(string cityName, float ping)
     {
-        MyTicketsRequestDTO ticket = new MyTicketsRequestDTO(new Dictionary<string, float> { { cityName, ping } });
-        MatchmakingClient.StartMatchmaking(ticket);
+        StartMatchmaking(new Dictionary<string, float> { { cityName, ping } })
 
         foreach (Transform child in ScrollListContainer.transform)
         {

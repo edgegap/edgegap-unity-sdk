@@ -123,6 +123,9 @@ namespace Edgegap.Matchmaking
             Handler.StartCoroutine(GetLatencies(beacons, onCompleteDelegate, requests));
         }
 
+        [Obsolete(
+            "Managing tickets in clients is deprecated, see the Group Up flow instead"
+        )]
         public void StartMatchmaking(T ticket, bool abandon = false)
         {
             if (Assignment.Current is not null && !abandon)
@@ -526,7 +529,6 @@ namespace Edgegap.Matchmaking
         {
             Polling = false;
             yield return new WaitForSeconds(RemoveAssignmentSeconds);
-            Assignment._Update(null, "removed");
             Group._Update(null, "removed");
         }
 

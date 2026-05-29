@@ -89,9 +89,7 @@ public class MatchmakingClientHandler : MonoBehaviour
                                     beacons.Beacons,
                                     (Dictionary<string, float> pings) =>
                                     {
-                                        MatchmakingClient.StartMatchmaking(
-                                            new MyTicketsRequestDTO(pings)
-                                        );
+                                        StartMatchmaking(pings);
                                     }
                                 );
                             },
@@ -189,18 +187,9 @@ public class MatchmakingClientHandler : MonoBehaviour
         StopMatchmaking();
     }
 
-    public void StartMatchmaking(MyTicketsRequestDTO ticket)
+    public void StartMatchmaking(Dictionary<string, float> pings)
     {
-        MatchmakingClient.StartMatchmaking(ticket);
-    }
-
-    public void StartGroupMatchmaking(
-        MyGroupUpRequestDTO group,
-        bool abandon = false
-    )
-    {
-        group.IsReady = true;
-        MatchmakingClient.CreateGroup(group, abandon);
+        MatchmakingClient.CreateGroup(new MyGroupUpRequestDTO(pings, true));
     }
 
     public void StopMatchmaking()
