@@ -8,10 +8,8 @@ using UnityEngine.Networking;
 using UnityEngine.UI;
 using L = Edgegap.Logger;
 using MyTicketsAttributes = Edgegap.Matchmaking.LatenciesAttributesDTO;
-using MyTicketsRequestDTO = Edgegap.Matchmaking.SimpleTicketsRequestDTO;
 using MyGroupUpRequestDTO = Edgegap.Matchmaking.SimpleGroupUpRequestDTO;
 
-// todo replace SimpleTicketsRequestDTO with CustomTicketsRequestDTO
 // todo replace LatenciesAttributesDTO with CustomTicketsAttributes
 // todo replace SimpleGroupUpRequestDTO with CustomGroupUpRequestDTO
 
@@ -41,7 +39,7 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
     public bool LogPollingUpdates = false;
     #endregion
 
-    public Client<MyTicketsRequestDTO, MyTicketsAttributes, MyGroupUpRequestDTO> MatchmakingClient;
+    public GroupClient<MyGroupUpRequestDTO, MyTicketsAttributes> MatchmakingClient;
 
     #region Region Picker UI
     public GameObject ScrollListContainer;
@@ -124,7 +122,7 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
     public void Start()
     {
         // configure Matchmaking
-        MatchmakingClient = new Client<MyTicketsRequestDTO, MyTicketsAttributes, MyGroupUpRequestDTO>(
+        MatchmakingClient = new GroupClient<MyGroupUpRequestDTO, MyTicketsAttributes>(
             this,
             BaseUrl,
             AuthToken,
@@ -224,72 +222,6 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
                     MatchmakingClient.StopMatchmaking();
                 }
             },
-            // handle ticket assignment
-            (
-                Observable<TicketResponseDTO> assignment,
-                ObservableActionType action,
-                string message
-            ) =>
-            {
-                if (
-                    action == ObservableActionType.Update
-                    && (
-                        message.Contains("received")
-                        || message.Contains("updated")
-                        || message.Contains("abandon")
-                    )
-                )
-                {
-                    // todo update UI
-                }
-
-                if (
-                    action == ObservableActionType.Update
-                    && message.Contains("updated")
-                    && assignment.Current.Status == "MATCH_FOUND"
-                )
-                {
-                    StatusDisplay.text = "Match found, awaiting assignment";
-                    DisconnectButton.SetActive(false);
-                }
-
-                if (
-                    (
-                        action == ObservableActionType.Update
-                        && message.Contains("updated")
-                        && assignment.Current.Status == "HOST_ASSIGNED"
-                    )
-                    || (
-                        action == ObservableActionType.Log
-                        && message.Contains("reconnect suggested")
-                    )
-                )
-                {
-                    foreach (Transform child in ScrollListContainer.transform)
-                    {
-                        Destroy(child.gameObject);
-                    }
-
-                    // todo join game on pre-defined game port
-                    StatusDisplay.text = "Host assigned, joining game";
-                    L.Log(
-                        $"MM ClientHandler | Joining game: {assignment.Current.Assignment.Ports["gameport"].Link}"
-                    );
-
-                    DisconnectButton.GetComponentInChildren<Text>().text = "Disconnect";
-                    DisconnectButton.SetActive(true);
-                    DisconnectButton.GetComponent<Button>().interactable = false;
-                }
-
-                if (
-                    action == ObservableActionType.Update
-                        && message.Contains("removed")
-                        && assignment.Previous?.Status == "HOST_ASSIGNED"
-                )
-                {
-                    DisconnectButton.GetComponent<Button>().interactable = true;
-                }
-            },
             // handle group assignment
             (
                 Observable<GroupUpResponseDTO> group,
@@ -308,17 +240,52 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
                 {
                     // todo update UI
                 }
-                
+
                 if (
                     action == ObservableActionType.Update
                     && message.Contains("updated")
-                    && group.Current.Status == "HOST_ASSIGNED"
+                    && group.Current.Status == "MATCH_FOUND"
                 )
                 {
+                    StatusDisplay.text = "Match found, awaiting assignment";
+                    DisconnectButton.SetActive(false);
+                }
+
+                if (
+                    (
+                        action == ObservableActionType.Update
+                        && message.Contains("updated")
+                        && group.Current.Status == "HOST_ASSIGNED"
+                    )
+                    || (
+                        action == ObservableActionType.Log
+                        && message.Contains("reconnect suggested")
+                    )
+                )
+                {
+                    foreach (Transform child in ScrollListContainer.transform)
+                    {
+                        Destroy(child.gameObject);
+                    }
+
                     // todo join game on pre-defined game port
-                    Debug.Log(
-                        $"joining game: {group.Current.Assignment.Ports["gameport"].Link}"
+                    StatusDisplay.text = "Host assigned, joining game";
+                    L.Log(
+                        $"MM ClientHandler | Joining game: {group.Current.Assignment.Ports["gameport"].Link}"
                     );
+
+                    DisconnectButton.GetComponentInChildren<Text>().text = "Disconnect";
+                    DisconnectButton.SetActive(true);
+                    DisconnectButton.GetComponent<Button>().interactable = false;
+                }
+
+                if (
+                    action == ObservableActionType.Update
+                        && message.Contains("removed")
+                        && group.Previous?.Status == "HOST_ASSIGNED"
+                )
+                {
+                    DisconnectButton.GetComponent<Button>().interactable = true;
                 }
             }
         );
@@ -326,7 +293,7 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
 
     public void OnApplicationPause(bool pause)
     {
-        if (!DeleteTicketOnPause || MatchmakingClient.Assignment.Current is null)
+        if (!DeleteTicketOnPause || MatchmakingClient.Group.Current is null)
             return;
         StopMatchmaking();
     }
@@ -338,9 +305,14 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
         StopMatchmaking();
     }
 
-    public void StartMatchmaking(Dictionary<string, float> pings)
+    public void StartMatchmaking(Dictionary<string, float> pings, bool isReady)
     {
-        MatchmakingClient.CreateGroup(new MyGroupUpRequestDTO(pings, true));
+        MatchmakingClient.CreateGroup(new MyGroupUpRequestDTO(pings, isReady));
+    }
+
+    public void StartMatchmaking(Dictionary<string, float> pings, bool isReady, string groupID)
+    {
+        MatchmakingClient.JoinGroup(new MyGroupUpRequestDTO(pings, isReady), groupID);
     }
 
     public void StopMatchmaking()
@@ -351,7 +323,7 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
 
     public void OnHubBtnClick(string cityName, float ping)
     {
-        StartMatchmaking(new Dictionary<string, float> { { cityName, ping } })
+        StartMatchmaking(new Dictionary<string, float> { { cityName, ping } }, true);
 
         foreach (Transform child in ScrollListContainer.transform)
         {

@@ -11,11 +11,10 @@ namespace Edgegap.Matchmaking
 {
     using L = Logger;
 
-    public class Client<T, A, G>
+    public class Client<T, A>
         where T : TicketsRequestDTO<A>
-        where G : GroupUpRequestDTO<A>, new()
     {
-        private Api<T, A, G> MatchmakingApi;
+        private Api<T, A> MatchmakingApi;
         private Edgegap.Ping Ping;
 
         public MonoBehaviour Handler;
@@ -34,11 +33,12 @@ namespace Edgegap.Matchmaking
 
         public Observable<MonitorResponseDTO> Monitor { get; private set; } =
             new Observable<MonitorResponseDTO>() { };
+
+        [Obsolete(
+            "Managing tickets in clients is deprecated, see the Group Up flow instead"
+        )]
         public Observable<TicketResponseDTO> Assignment { get; private set; } =
             new Observable<TicketResponseDTO>() { };
-        public Observable<GroupUpResponseDTO> Group { get; private set; } =
-            new Observable<GroupUpResponseDTO>() { };
-        private protected bool Owner = false;
         private protected bool Polling = false;
 
         public Client(
@@ -153,6 +153,9 @@ namespace Edgegap.Matchmaking
             });
         }
 
+        [Obsolete(
+            "Managing tickets in clients is deprecated, see the Group Up flow instead"
+        )]
         public void ResumeMatchmaking(TicketResponseDTO assignment, bool abandon = false)
         {
             if (Assignment.Current is not null && !abandon)
@@ -167,107 +170,6 @@ namespace Edgegap.Matchmaking
                 Polling = true;
                 StartPollingAssignment();
             });
-        }
-
-        public void CreateGroup(G group, bool abandon = false)
-        {
-            if (Group.Current is not null && !abandon)
-            {
-                Assignment._Error("conflict, abandon and restart");
-                return;
-            }
-
-            StopMatchmaking(() =>
-            {
-                MatchmakingApi.CreateGroup(
-                    group,
-                    (GroupUpResponseDTO group, UnityWebRequest request) =>
-                    {
-                        Group._Update(group, "received");
-                        Owner = true;
-                        Polling = true;
-                        Handler.StartCoroutine(DelayPollingAssignment());
-                    },
-                    (string error, UnityWebRequest request) =>
-                    {
-                        Group._Error($"group create failed\n{error}");
-                        StopMatchmaking();
-                    }
-                );
-            });
-        }
-
-        public void JoinGroup(G member, string groupId, bool abandon = false)
-        {
-            if (Group.Current is not null && !abandon)
-            {
-                Assignment._Error("conflict, abandon and restart");
-                return;
-            }
-
-            StopMatchmaking(() =>
-            {
-                MatchmakingApi.CreateGroupMember(
-                    member,
-                    groupId,
-                    (GroupUpResponseDTO group, UnityWebRequest request) =>
-                    {
-                        Group._Update(group, "joined");
-                        Owner = false;
-                        Polling = true;
-                        Handler.StartCoroutine(DelayPollingAssignment());
-                    },
-                    (string error, UnityWebRequest request) =>
-                    {
-                        Group._Error($"group join failed\n{error}");
-                        StopMatchmaking();
-                    }
-                );
-            });
-        }
-
-        public void UpdateMember(string groupId, string memberId, bool isReady)
-        {
-            MatchmakingApi.UpdateGroupMember(
-                groupId,
-                memberId,
-                isReady,
-                (GroupUpResponseDTO group, UnityWebRequest request) =>
-                {
-                    Group._Update(group, "updated");
-                },
-                (string error, UnityWebRequest request) =>
-                {
-                    Group._Error($"member update failed\n{error}");
-                }
-            );
-        }
-
-        public void StartMatchmaking()
-        {
-            if (Group.Current is null)
-            {
-                Beacons(
-                    (BeaconsResponseDTO beacons) =>
-                    {
-                        MeasureBeaconsRoundTripTime(
-                            beacons.Beacons,
-                            (Dictionary<string, float> pings) =>
-                            {
-                                G group = new G();
-                                group.SetBeacons(pings);
-                                group.IsReady = true;
-                                CreateGroup(group);
-                            }
-                        );
-                    },
-                    (string error, UnityWebRequest request) => { }
-                );
-            }
-            else
-            {
-                UpdateMember(Group.Current.GroupID, Group.Current.MemberID, true);
-            }
         }
 
         [Obsolete(
@@ -318,11 +220,14 @@ namespace Edgegap.Matchmaking
             ResumeMatchmaking(assignment, abandon);
         }
 
+        [Obsolete(
+            "Managing tickets in clients is deprecated, see the Group Up flow instead"
+        )]
         public void StopMatchmaking(Action onCompletedDelegate = null)
         {
             Polling = false;
 
-            if (Group.Current is null)
+            if (Assignment.Current is null)
             {
                 if (onCompletedDelegate is not null)
                 {
@@ -331,87 +236,47 @@ namespace Edgegap.Matchmaking
                 return;
             }
 
-            if (Owner)
-            {
-                MatchmakingApi.DeleteGroup(
-                    Group.Current.GroupID,
-                    (UnityWebRequest request) =>
+            MatchmakingApi.DeleteTicketAsync(
+                Assignment.Current.ID,
+                (UnityWebRequest request) =>
+                {
+                    Assignment._Update(null, "abandoned");
+                    if (onCompletedDelegate is not null)
                     {
-                        Group._Update(null, "abandonned");
-
-                        if (onCompletedDelegate is not null)
-                        {
-                            onCompletedDelegate();
-                        }
-                    },
-                    (string error, UnityWebRequest request) =>
-                    {
-                        if (request.responseCode == 409)
-                        {
-                            Group._Notify(
-                                "abandon failed (matchmaking started)",
-                                ObservableActionType.Warn
-                            );
-                        }
-                        else if (request.responseCode == 404)
-                        {
-                            Group._Update(null, "abandon failed (not found)");
-                        }
-                        else
-                        {
-                            Group._Error($"abandon failed\n{error}", null);
-                        }
-
-                        if (onCompletedDelegate is not null)
-                        {
-                            onCompletedDelegate();
-                        }
+                        onCompletedDelegate();
                     }
-                );
-            }
-            else
-            {
-                MatchmakingApi.DeleteGroupMember(
-                    Group.Current.GroupID,
-                    Group.Current.MemberID,
-                    (UnityWebRequest request) =>
+                },
+                (string error, UnityWebRequest request) =>
+                {
+                    if (request.responseCode == 409)
                     {
-                        Group._Update(null, "abandonned");
-
-                        if (onCompletedDelegate is not null)
-                        {
-                            onCompletedDelegate();
-                        }
-                    },
-                    (string error, UnityWebRequest request) =>
-                    {
-                        if (request.responseCode == 409)
-                        {
-                            Group._Notify(
-                                "abandon failed (matchmaking started)",
-                                ObservableActionType.Warn
-                            );
-                        }
-                        else if (request.responseCode == 404)
-                        {
-                            Group._Update(null, "abandon failed (not found)");
-                        }
-                        else
-                        {
-                            Group._Error($"abandon failed\n{error}", null);
-                        }
-
-                        if (onCompletedDelegate is not null)
-                        {
-                            onCompletedDelegate();
-                        }
+                        Assignment._Notify(
+                            "abandon failed (already matched)",
+                            ObservableActionType.Warn
+                        );
                     }
-                );
-            }
+                    else if (request.responseCode == 404)
+                    {
+                        Assignment._Update(null, "abandon failed (not found)");
+                    }
+                    else
+                    {
+                        Assignment._Error($"abandon failed\n{error}", null);
+                    }
+
+                    if (onCompletedDelegate is not null)
+                    {
+                        onCompletedDelegate();
+                    }
+                }
+            );
         }
         #endregion
 
         #region Initialization
+        [Obsolete(
+            "Managing tickets in clients is deprecated, see the Group Up flow instead"
+        )]
         public void Initialize(
             UnityAction<
                 Observable<MonitorResponseDTO>,
@@ -423,7 +288,6 @@ namespace Edgegap.Matchmaking
                 ObservableActionType,
                 string
             > onAssignmentUpdate,
-            UnityAction<Observable<GroupUpResponseDTO>, ObservableActionType, string> onGroupUpdate,
             UnityAction<Observable<T>, ObservableActionType, string> onTicketUpdate = null
         )
         {
@@ -437,7 +301,7 @@ namespace Edgegap.Matchmaking
                 throw new Exception("AuthToken not declared.");
             }
 
-            MatchmakingApi = new Api<T, A, G>(Handler, AuthToken, BaseUrl);
+            MatchmakingApi = new Api<T, A>(Handler, AuthToken, BaseUrl);
             Ping = new Edgegap.Ping(Handler);
 
             L.SubscribeLogger(Monitor, "MM", "Monitor");
@@ -446,42 +310,45 @@ namespace Edgegap.Matchmaking
             L.SubscribeLogger(Assignment, "MM", "Assignment", LogAssignmentUpdates);
             Assignment.Subscribe(onAssignmentUpdate);
 
-            L.SubscribeLogger(Group, "MM", "Group", LogAssignmentUpdates);
-            Group.Subscribe(onGroupUpdate);
-
             Status();
         }
         #endregion
 
         #region Internals
+        [Obsolete(
+            "Managing tickets in clients is deprecated, see the Group Up flow instead"
+        )]
         internal void StartPollingAssignment(int consecutiveErrors = 0)
         {
             if (!Polling)
             {
                 if (LogPollingUpdates)
                 {
-                    Group._Notify("polling stopped");
+                    Assignment._Notify("polling stopped");
                 }
                 return;
             }
 
             if (LogPollingUpdates)
             {
-                Group._Notify($"polling [{consecutiveErrors + 1}/{MaxConsecutivePollingErrors}]");
+                Assignment._Notify(
+                    $"polling [{consecutiveErrors + 1}/{MaxConsecutivePollingErrors}]"
+                );
             }
 
-            MatchmakingApi.GetGroupMember(
-                Group.Current.GroupID,
-                Group.Current.MemberID,
-                (GroupUpResponseDTO group, UnityWebRequest request) =>
+            MatchmakingApi.GetTicketAsync(
+                Assignment.Current.ID,
+                (TicketResponseDTO assignment, UnityWebRequest request) =>
                 {
-                    if (Group.Current is not null && group.Status != Group.Current.Status)
+                    if (
+                        Assignment.Current is not null
+                        && assignment.Status != Assignment.Current.Status
+                    )
                     {
-                        Group._Update(group, $"updated [{group.Status}]");
-
+                        Assignment._Update(assignment, $"updated [{assignment.Status}]");
                         if (
-                            Group.Current.Status == "HOST_ASSIGNED"
-                            || Group.Current.Status == "CANCELLED"
+                            Assignment.Current.Status == "HOST_ASSIGNED"
+                            || Assignment.Current.Status == "CANCELLED"
                         )
                         {
                             Handler.StartCoroutine(ExpireAssignment());
@@ -500,7 +367,7 @@ namespace Edgegap.Matchmaking
                 {
                     if (consecutiveErrors + 1 > MaxConsecutivePollingErrors)
                     {
-                        Group._Error($"polling failed, reached maximum retries\n{error}");
+                        Assignment._Error($"polling failed, reached maximum retries\n{error}");
                         StopMatchmaking();
                     }
                     else
@@ -511,7 +378,7 @@ namespace Edgegap.Matchmaking
                         }
                         else
                         {
-                            Group._Error($"polling failed\n{error}");
+                            Assignment._Error($"polling failed\n{error}");
                             StopMatchmaking();
                         }
                     }
@@ -529,7 +396,7 @@ namespace Edgegap.Matchmaking
         {
             Polling = false;
             yield return new WaitForSeconds(RemoveAssignmentSeconds);
-            Group._Update(null, "removed");
+            Assignment._Update(null, "removed");
         }
 
         internal IEnumerator GetLatencies(

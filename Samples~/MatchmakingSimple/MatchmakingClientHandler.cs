@@ -1,14 +1,11 @@
 using Edgegap;
 using Edgegap.Matchmaking;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Networking;
 using MyGroupUpRequestDTO = Edgegap.Matchmaking.SimpleGroupUpRequestDTO;
 using MyTicketsAttributes = Edgegap.Matchmaking.LatenciesAttributesDTO;
-using MyTicketsRequestDTO = Edgegap.Matchmaking.SimpleTicketsRequestDTO;
 
-// todo replace SimpleTicketsRequestDTO with CustomTicketsRequestDTO
 // todo replace LatenciesAttributesDTO with CustomTicketsAttributes
 // todo replace SimpleGroupUpRequestDTO with CustomGroupUpRequestDTO
 
@@ -34,7 +31,7 @@ public class MatchmakingClientHandler : MonoBehaviour
     public bool LogAssignmentUpdates = true;
     public bool LogPollingUpdates = false;
 
-    public Client<MyTicketsRequestDTO, MyTicketsAttributes, MyGroupUpRequestDTO> MatchmakingClient;
+    public GroupClient<MyGroupUpRequestDTO, MyTicketsAttributes> MatchmakingClient;
 
     public void Awake()
     {
@@ -53,7 +50,7 @@ public class MatchmakingClientHandler : MonoBehaviour
     public void Start()
     {
         // configure Matchmaking
-        MatchmakingClient = new Client<MyTicketsRequestDTO, MyTicketsAttributes, MyGroupUpRequestDTO>(
+        MatchmakingClient = new GroupClient<MyGroupUpRequestDTO, MyTicketsAttributes>(
             this,
             BaseUrl,
             AuthToken,
@@ -89,7 +86,7 @@ public class MatchmakingClientHandler : MonoBehaviour
                                     beacons.Beacons,
                                     (Dictionary<string, float> pings) =>
                                     {
-                                        StartMatchmaking(pings);
+                                        StartMatchmaking(pings, true);
                                     }
                                 );
                             },
@@ -106,37 +103,6 @@ public class MatchmakingClientHandler : MonoBehaviour
                         Debug.LogError($"Matchmaking error.\n{monitor.Current}");
                         MatchmakingClient.StopMatchmaking();
                     }
-                }
-            },
-            // handle ticket assignment
-            (
-                Observable<TicketResponseDTO> assignment,
-                ObservableActionType action,
-                string message
-            ) =>
-            {
-                if (
-                    action == ObservableActionType.Update
-                    && (
-                        message.Contains("received")
-                        || message.Contains("updated")
-                        || message.Contains("abandon")
-                    )
-                )
-                {
-                    // todo update UI
-                }
-
-                if (
-                    action == ObservableActionType.Update
-                    && message.Contains("updated")
-                    && assignment.Current.Status == "HOST_ASSIGNED"
-                )
-                {
-                    // todo join game on pre-defined game port
-                    Debug.Log(
-                        $"joining game: {assignment.Current.Assignment.Ports["gameport"].Link}"
-                    );
                 }
             },
             // handle group assignment
@@ -175,7 +141,7 @@ public class MatchmakingClientHandler : MonoBehaviour
 
     public void OnApplicationPause(bool pause)
     {
-        if (!DeleteTicketOnPause || MatchmakingClient.Assignment.Current is null)
+        if (!DeleteTicketOnPause || MatchmakingClient.Group.Current is null)
             return;
         StopMatchmaking();
     }
@@ -187,9 +153,14 @@ public class MatchmakingClientHandler : MonoBehaviour
         StopMatchmaking();
     }
 
-    public void StartMatchmaking(Dictionary<string, float> pings)
+    public void StartMatchmaking(Dictionary<string, float> pings, bool isReady)
     {
-        MatchmakingClient.CreateGroup(new MyGroupUpRequestDTO(pings, true));
+        MatchmakingClient.CreateGroup(new MyGroupUpRequestDTO(pings, isReady));
+    }
+
+    public void StartMatchmaking(Dictionary<string, float> pings, bool isReady, string groupID)
+    {
+        MatchmakingClient.JoinGroup(new MyGroupUpRequestDTO(pings, isReady), groupID);
     }
 
     public void StopMatchmaking()

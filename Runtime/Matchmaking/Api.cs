@@ -8,9 +8,8 @@ namespace Edgegap.Matchmaking
 {
     using L = Logger;
 
-    public class Api<T, A, G>
+    public class Api<T, A>
         where T : TicketsRequestDTO<A>
-        where G : GroupUpRequestDTO<A>
     {
         internal SafeHttpRequest Request;
         internal string AuthToken;
@@ -192,7 +191,7 @@ namespace Edgegap.Matchmaking
         }
 
         public void CreateGroup(
-            G group,
+            T group,
             Action<GroupUpResponseDTO, UnityWebRequest> onSuccessDelegate,
             Action<string, UnityWebRequest> onErrorDelegate
         )
@@ -268,7 +267,7 @@ namespace Edgegap.Matchmaking
         }
 
         public void CreateGroupMember(
-            G member,
+            T member,
             string groupID,
             Action<GroupUpResponseDTO, UnityWebRequest> onSuccessDelegate,
             Action<string, UnityWebRequest> onErrorDelegate
