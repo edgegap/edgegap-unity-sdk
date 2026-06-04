@@ -81,7 +81,7 @@ public class ServerBrowserServerHandler : MonoBehaviour
         #endregion
 
         DeploymentEnv = new DeploymentEnvironmentDTO(env);
-        PolicyName = env["SB_POLICY_NAME"]?.ToString() ?? "on-demand";
+        PolicyName = env["SB_SCALING_POLICY_NAME"]?.ToString() ?? "on-demand";
         BaseUrl ??= env["SB_BASE_URL"]?.ToString();
         ServerToken ??= env["SB_SERVER_TOKEN"]?.ToString();
 
