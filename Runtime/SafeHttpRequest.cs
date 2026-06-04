@@ -172,13 +172,9 @@ namespace Edgegap
                         {
                             try
                             {
-                                if (DateTime.TryParse(retryAfter, out var retryAfterDateTime))
-                                {
-                                    retryParameters.BackoffSeconds = () =>
-                                        (float)
-                                            DateTime.Now.Subtract(retryAfterDateTime).TotalSeconds
-                                        + (0.1f * Random.value);
-                                }
+                                Single.TryParse(retryAfter, out float retryAfterFloat);
+                                retryParameters.BackoffSeconds = () =>
+                                    retryAfterFloat + (0.1f * Random.value);
                             }
                             catch (Exception e)
                             {
