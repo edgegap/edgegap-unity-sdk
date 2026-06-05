@@ -39,7 +39,11 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
     public bool LogPollingUpdates = false;
     #endregion
 
-    public GroupClient<MyGroupUpRequestDTO, MyTicketsAttributes> MatchmakingClient;
+    public GroupClient<
+            TicketsRequestDTO<MyTicketsAttributes>, 
+            MyTicketsAttributes, 
+            MyGroupUpRequestDTO
+        > MatchmakingClient;
 
     #region Region Picker UI
     public GameObject ScrollListContainer;
@@ -122,7 +126,11 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
     public void Start()
     {
         // configure Matchmaking
-        MatchmakingClient = new GroupClient<MyGroupUpRequestDTO, MyTicketsAttributes>(
+        MatchmakingClient = new GroupClient<
+            TicketsRequestDTO<MyTicketsAttributes>, 
+            MyTicketsAttributes, 
+            MyGroupUpRequestDTO
+        >(
             this,
             BaseUrl,
             AuthToken,
@@ -308,11 +316,6 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
     public void StartMatchmaking(Dictionary<string, float> pings, bool isReady)
     {
         MatchmakingClient.CreateGroup(new MyGroupUpRequestDTO(pings, isReady));
-    }
-
-    public void StartMatchmaking(Dictionary<string, float> pings, bool isReady, string groupID)
-    {
-        MatchmakingClient.JoinGroup(new MyGroupUpRequestDTO(pings, isReady), groupID);
     }
 
     public void StopMatchmaking()

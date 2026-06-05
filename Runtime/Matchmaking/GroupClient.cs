@@ -11,10 +11,11 @@ namespace Edgegap.Matchmaking
 {
     using L = Logger;
 
-    public class GroupClient<T, A>
-        where T : GroupUpRequestDTO<A>
+    public class GroupClient<T, A, G>
+        where T : TicketsRequestDTO<A>
+        where G : GroupUpRequestDTO<A>
     {
-        private Api<T, A> MatchmakingApi;
+        private Api<T, A, G> MatchmakingApi;
         private Edgegap.Ping Ping;
 
         public MonoBehaviour Handler;
@@ -136,7 +137,7 @@ namespace Edgegap.Matchmaking
             });
         }
 
-        public void CreateGroup(T group, bool abandon = false)
+        public void CreateGroup(G group, bool abandon = false)
         {
             if (Group.Current is not null && !abandon)
             {
@@ -164,7 +165,7 @@ namespace Edgegap.Matchmaking
             });
         }
 
-        public void JoinGroup(T member, string groupId, bool abandon = false)
+        public void JoinGroup(G member, string groupId, bool abandon = false)
         {
             if (Group.Current is not null && !abandon)
             {
@@ -295,8 +296,7 @@ namespace Edgegap.Matchmaking
                 Observable<GroupUpResponseDTO>,
                 ObservableActionType,
                 string
-            > onGroupUpUpdate,
-            UnityAction<Observable<T>, ObservableActionType, string> onTicketUpdate = null
+            > onGroupUpUpdate
         )
         {
             if (string.IsNullOrEmpty(BaseUrl.Trim()))
@@ -309,7 +309,7 @@ namespace Edgegap.Matchmaking
                 throw new Exception("AuthToken not declared.");
             }
 
-            MatchmakingApi = new Api<T, A>(Handler, AuthToken, BaseUrl);
+            MatchmakingApi = new Api<T, A, G>(Handler, AuthToken, BaseUrl);
             Ping = new Edgegap.Ping(Handler);
 
             L.SubscribeLogger(Monitor, "MM", "Monitor");
@@ -429,7 +429,7 @@ namespace Edgegap.Matchmaking
             Action onCompletedDelegate = null
         )
         {
-            if (request.responseCode == 409) 
+            if (request.responseCode == 409)
             {
                 Group._Notify(
                     "abandon failed (match found)",

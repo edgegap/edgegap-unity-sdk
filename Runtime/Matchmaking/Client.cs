@@ -11,10 +11,11 @@ namespace Edgegap.Matchmaking
 {
     using L = Logger;
 
-    public class Client<T, A>
+    public class Client<T, A, G>
         where T : TicketsRequestDTO<A>
+        where G : GroupUpRequestDTO<A>
     {
-        private Api<T, A> MatchmakingApi;
+        private Api<T, A, G> MatchmakingApi;
         private Edgegap.Ping Ping;
 
         public MonoBehaviour Handler;
@@ -301,7 +302,7 @@ namespace Edgegap.Matchmaking
                 throw new Exception("AuthToken not declared.");
             }
 
-            MatchmakingApi = new Api<T, A>(Handler, AuthToken, BaseUrl);
+            MatchmakingApi = new Api<T, A, G>(Handler, AuthToken, BaseUrl);
             Ping = new Edgegap.Ping(Handler);
 
             L.SubscribeLogger(Monitor, "MM", "Monitor");
@@ -315,9 +316,6 @@ namespace Edgegap.Matchmaking
         #endregion
 
         #region Internals
-        [Obsolete(
-            "Managing tickets in clients is deprecated, see the Group Up flow instead"
-        )]
         internal void StartPollingAssignment(int consecutiveErrors = 0)
         {
             if (!Polling)
