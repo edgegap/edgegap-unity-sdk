@@ -32,9 +32,8 @@ public class MatchmakingClientHandler : MonoBehaviour
     public bool LogPollingUpdates = false;
 
     public GroupClient<
-            TicketsRequestDTO<MyTicketsAttributes>,
-            MyTicketsAttributes,
-            MyGroupUpRequestDTO
+            MyGroupUpRequestDTO,
+            MyTicketsAttributes
         > MatchmakingClient;
 
     public void Awake()
@@ -55,9 +54,8 @@ public class MatchmakingClientHandler : MonoBehaviour
     {
         // configure Matchmaking
         MatchmakingClient = new GroupClient<
-            TicketsRequestDTO<MyTicketsAttributes>,
-            MyTicketsAttributes,
-            MyGroupUpRequestDTO
+            MyGroupUpRequestDTO,
+            MyTicketsAttributes
         >(
             this,
             BaseUrl,

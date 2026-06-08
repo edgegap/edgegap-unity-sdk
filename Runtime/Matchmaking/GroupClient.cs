@@ -11,11 +11,10 @@ namespace Edgegap.Matchmaking
 {
     using L = Logger;
 
-    public class GroupClient<T, A, G>
-        where T : TicketsRequestDTO<A>
+    public class GroupClient<G, A>
         where G : GroupUpRequestDTO<A>
     {
-        private Api<T, A, G> MatchmakingApi;
+        private Api MatchmakingApi;
         private Edgegap.Ping Ping;
 
         public MonoBehaviour Handler;
@@ -147,7 +146,7 @@ namespace Edgegap.Matchmaking
 
             StopMatchmaking(() =>
             {
-                MatchmakingApi.CreateGroup(
+                MatchmakingApi.CreateGroup<G, A>(
                     group,
                     (GroupUpResponseDTO group, UnityWebRequest request) =>
                     {
@@ -175,7 +174,7 @@ namespace Edgegap.Matchmaking
 
             StopMatchmaking(() =>
             {
-                MatchmakingApi.CreateGroupMember(
+                MatchmakingApi.CreateGroupMember<G, A>(
                     member,
                     groupId,
                     (GroupUpResponseDTO group, UnityWebRequest request) =>
@@ -309,7 +308,7 @@ namespace Edgegap.Matchmaking
                 throw new Exception("AuthToken not declared.");
             }
 
-            MatchmakingApi = new Api<T, A, G>(Handler, AuthToken, BaseUrl);
+            MatchmakingApi = new Api(Handler, AuthToken, BaseUrl);
             Ping = new Edgegap.Ping(Handler);
 
             L.SubscribeLogger(Monitor, "MM", "Monitor");
@@ -431,10 +430,7 @@ namespace Edgegap.Matchmaking
         {
             if (request.responseCode == 409)
             {
-                Group._Notify(
-                    "abandon failed (match found)",
-                    ObservableActionType.Warn
-                );
+                Group._Notify("abandon failed (match found)", ObservableActionType.Warn);
             }
             else if (request.responseCode == 404)
             {

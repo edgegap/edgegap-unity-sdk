@@ -11,11 +11,10 @@ namespace Edgegap.Matchmaking
 {
     using L = Logger;
 
-    public class Client<T, A, G>
+    public class Client<T, A>
         where T : TicketsRequestDTO<A>
-        where G : GroupUpRequestDTO<A>
     {
-        private Api<T, A, G> MatchmakingApi;
+        private Api MatchmakingApi;
         private Edgegap.Ping Ping;
 
         public MonoBehaviour Handler;
@@ -35,9 +34,7 @@ namespace Edgegap.Matchmaking
         public Observable<MonitorResponseDTO> Monitor { get; private set; } =
             new Observable<MonitorResponseDTO>() { };
 
-        [Obsolete(
-            "Managing tickets in clients is deprecated, see the Group Up flow instead"
-        )]
+        [Obsolete("Managing tickets in clients is deprecated, see the Group Up flow instead")]
         public Observable<TicketResponseDTO> Assignment { get; private set; } =
             new Observable<TicketResponseDTO>() { };
         private protected bool Polling = false;
@@ -137,7 +134,7 @@ namespace Edgegap.Matchmaking
 
             StopMatchmaking(() =>
             {
-                MatchmakingApi.CreateTicketAsync(
+                MatchmakingApi.CreateTicketAsync<T, A>(
                     ticket,
                     (TicketResponseDTO assignment, UnityWebRequest request) =>
                     {
@@ -195,7 +192,7 @@ namespace Edgegap.Matchmaking
 
             StopMatchmaking(() =>
             {
-                MatchmakingApi.CreateGroupTicketAsync(
+                MatchmakingApi.CreateGroupTicketAsync<GroupTicketsRequestDTO<A>, A>(
                     groupTicket,
                     (GroupTicketsResponseDTO assignment, UnityWebRequest request) =>
                     {
@@ -302,7 +299,7 @@ namespace Edgegap.Matchmaking
                 throw new Exception("AuthToken not declared.");
             }
 
-            MatchmakingApi = new Api<T, A, G>(Handler, AuthToken, BaseUrl);
+            MatchmakingApi = new Api(Handler, AuthToken, BaseUrl);
             Ping = new Edgegap.Ping(Handler);
 
             L.SubscribeLogger(Monitor, "MM", "Monitor");

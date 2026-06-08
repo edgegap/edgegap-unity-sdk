@@ -40,9 +40,8 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
     #endregion
 
     public GroupClient<
-            TicketsRequestDTO<MyTicketsAttributes>, 
-            MyTicketsAttributes, 
-            MyGroupUpRequestDTO
+            MyGroupUpRequestDTO, 
+            MyTicketsAttributes
         > MatchmakingClient;
 
     #region Region Picker UI
@@ -127,9 +126,8 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
     {
         // configure Matchmaking
         MatchmakingClient = new GroupClient<
-            TicketsRequestDTO<MyTicketsAttributes>, 
-            MyTicketsAttributes, 
-            MyGroupUpRequestDTO
+            MyGroupUpRequestDTO, 
+            MyTicketsAttributes
         >(
             this,
             BaseUrl,

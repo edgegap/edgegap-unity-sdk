@@ -8,9 +8,7 @@ namespace Edgegap.Matchmaking
 {
     using L = Logger;
 
-    public class Api<T, A, G>
-        where T : TicketsRequestDTO<A>
-        where G : GroupUpRequestDTO<A>
+    public class Api
     {
         internal SafeHttpRequest Request;
         internal string AuthToken;
@@ -85,11 +83,12 @@ namespace Edgegap.Matchmaking
             );
         }
 
-        public void CreateTicketAsync(
+        public void CreateTicketAsync<T, A>(
             T ticket,
             Action<TicketResponseDTO, UnityWebRequest> onSuccessDelegate,
             Action<string, UnityWebRequest> onErrorDelegate
         )
+            where T : TicketsRequestDTO<A>
         {
             Request.Post(
                 $"{BaseUrl}/{PATH_TICKETS}",
@@ -115,11 +114,12 @@ namespace Edgegap.Matchmaking
             );
         }
 
-        public void CreateGroupTicketAsync(
-            GroupTicketsRequestDTO<A> groupTicket,
+        public void CreateGroupTicketAsync<T, A>(
+            T groupTicket,
             Action<GroupTicketsResponseDTO, UnityWebRequest> onSuccessDelegate,
             Action<string, UnityWebRequest> onErrorDelegate
         )
+            where T : GroupTicketsRequestDTO<A>
         {
             Request.Post(
                 $"{BaseUrl}/{PATH_GROUP_TICKETS}",
@@ -191,11 +191,12 @@ namespace Edgegap.Matchmaking
             );
         }
 
-        public void CreateGroup(
+        public void CreateGroup<G, A>(
             G group,
             Action<GroupUpResponseDTO, UnityWebRequest> onSuccessDelegate,
             Action<string, UnityWebRequest> onErrorDelegate
         )
+            where G : GroupUpRequestDTO<A>
         {
             Request.Post(
                 $"{BaseUrl}/{PATH_GROUP_UP}",
@@ -267,12 +268,13 @@ namespace Edgegap.Matchmaking
             );
         }
 
-        public void CreateGroupMember(
+        public void CreateGroupMember<G, A>(
             G member,
             string groupID,
             Action<GroupUpResponseDTO, UnityWebRequest> onSuccessDelegate,
             Action<string, UnityWebRequest> onErrorDelegate
         )
+            where G : GroupUpRequestDTO<A>
         {
             Request.Post(
                 $"{BaseUrl}/{PATH_GROUP_UP}/{groupID}/members",
