@@ -150,7 +150,7 @@ namespace Edgegap.Matchmaking
                     group,
                     (GroupUpResponseDTO group, UnityWebRequest request) =>
                     {
-                        Group._Update(group, "received");
+                        Group._Update(group, "created");
                         Owner = true;
                         Polling = true;
                         Handler.StartCoroutine(DelayPollingGroup());
@@ -203,7 +203,7 @@ namespace Edgegap.Matchmaking
         {
             if (Group.Current is null)
             {
-                Group._Error("group SetReady failed (not found)");
+                Group._Error("group not found");
                 return;
             }
 
@@ -213,7 +213,7 @@ namespace Edgegap.Matchmaking
                 isReady,
                 (GroupUpResponseDTO group, UnityWebRequest request) =>
                 {
-                    Group._Update(group, "updated");
+                    Group._Update(group, $"member updated [{isReady}]");
                 },
                 (string error, UnityWebRequest request) =>
                 {
@@ -223,7 +223,7 @@ namespace Edgegap.Matchmaking
                     }
                     else
                     {
-                        Group._Error($"group SetReady failed\n{error}");
+                        Group._Error($"group update failed\n{error}");
                     }
                 }
             );
@@ -345,7 +345,7 @@ namespace Edgegap.Matchmaking
                 {
                     if (Group.Current is not null && group.Status != Group.Current.Status)
                     {
-                        Group._Update(group, $"updated [{group.Status}]");
+                        Group._Update(group, $"group updated [{group.Status}]");
 
                         if (
                             Group.Current.Status == "HOST_ASSIGNED"
