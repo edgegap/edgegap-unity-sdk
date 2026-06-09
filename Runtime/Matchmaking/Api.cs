@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -7,8 +8,7 @@ namespace Edgegap.Matchmaking
 {
     using L = Logger;
 
-    public class Api<T, A>
-        where T : TicketsRequestDTO<A>
+    public class Api
     {
         internal SafeHttpRequest Request;
         internal string AuthToken;
@@ -18,6 +18,7 @@ namespace Edgegap.Matchmaking
         internal string PATH_BEACONS = "locations/beacons";
         internal string PATH_TICKETS = "tickets";
         internal string PATH_GROUP_TICKETS = "group-tickets";
+        internal string PATH_GROUP_UP = "groups";
 
         public Api(MonoBehaviour parent, string authToken, string baseUrl)
         {
@@ -82,11 +83,12 @@ namespace Edgegap.Matchmaking
             );
         }
 
-        public void CreateTicketAsync(
+        public void CreateTicketAsync<T, A>(
             T ticket,
             Action<TicketResponseDTO, UnityWebRequest> onSuccessDelegate,
             Action<string, UnityWebRequest> onErrorDelegate
         )
+            where T : TicketsRequestDTO<A>
         {
             Request.Post(
                 $"{BaseUrl}/{PATH_TICKETS}",
@@ -112,11 +114,12 @@ namespace Edgegap.Matchmaking
             );
         }
 
-        public void CreateGroupTicketAsync(
-            GroupTicketsRequestDTO<A> groupTicket,
+        public void CreateGroupTicketAsync<T, A>(
+            T groupTicket,
             Action<GroupTicketsResponseDTO, UnityWebRequest> onSuccessDelegate,
             Action<string, UnityWebRequest> onErrorDelegate
         )
+            where T : GroupTicketsRequestDTO<A>
         {
             Request.Post(
                 $"{BaseUrl}/{PATH_GROUP_TICKETS}",
@@ -179,6 +182,197 @@ namespace Edgegap.Matchmaking
         {
             Request.Delete(
                 $"{BaseUrl}/{PATH_TICKETS}/{ticketID}",
+                AuthToken,
+                (string response, UnityWebRequest request) =>
+                {
+                    onSuccessDelegate(request);
+                },
+                onErrorDelegate
+            );
+        }
+
+        public void CreateGroup<G, A>(
+            G group,
+            Action<GroupUpResponseDTO, UnityWebRequest> onSuccessDelegate,
+            Action<string, UnityWebRequest> onErrorDelegate
+        )
+            where G : GroupUpRequestDTO<A>
+        {
+            Request.Post(
+                $"{BaseUrl}/{PATH_GROUP_UP}",
+                AuthToken,
+                JsonConvert.SerializeObject(group),
+                (string response, UnityWebRequest request) =>
+                {
+                    try
+                    {
+                        GroupUpResponseDTO group =
+                            JsonConvert.DeserializeObject<GroupUpResponseDTO>(response);
+                        onSuccessDelegate(group, request);
+                    }
+                    catch (Exception e)
+                    {
+                        L.Error(
+                            $"Couldn't parse group, consider updating Matchmaking SDK. {e.Message}"
+                        );
+                        throw;
+                    }
+                },
+                onErrorDelegate
+            );
+        }
+
+        public void GetGroup(
+            string groupID,
+            Action<GroupDetailResponse, UnityWebRequest> onSuccessDelegate,
+            Action<string, UnityWebRequest> onErrorDelegate
+        )
+        {
+            Request.Get(
+                $"{BaseUrl}/{PATH_GROUP_UP}/{groupID}",
+                AuthToken,
+                (string response, UnityWebRequest request) =>
+                {
+                    try
+                    {
+                        GroupDetailResponse details =
+                            JsonConvert.DeserializeObject<GroupDetailResponse>(response);
+                        onSuccessDelegate(details, request);
+                    }
+                    catch (Exception e)
+                    {
+                        L.Error(
+                            $"Couldn't parse details, consider updating Matchmaking SDK. {e.Message}"
+                        );
+                        throw;
+                    }
+                },
+                onErrorDelegate
+            );
+        }
+
+        public void DeleteGroup(
+            string groupID,
+            Action<UnityWebRequest> onSuccessDelegate,
+            Action<string, UnityWebRequest> onErrorDelegate
+        )
+        {
+            Request.Delete(
+                $"{BaseUrl}/{PATH_GROUP_UP}/{groupID}",
+                AuthToken,
+                (string response, UnityWebRequest request) =>
+                {
+                    onSuccessDelegate(request);
+                },
+                onErrorDelegate
+            );
+        }
+
+        public void CreateGroupMember<G, A>(
+            G member,
+            string groupID,
+            Action<GroupUpResponseDTO, UnityWebRequest> onSuccessDelegate,
+            Action<string, UnityWebRequest> onErrorDelegate
+        )
+            where G : GroupUpRequestDTO<A>
+        {
+            Request.Post(
+                $"{BaseUrl}/{PATH_GROUP_UP}/{groupID}/members",
+                AuthToken,
+                JsonConvert.SerializeObject(member),
+                (string response, UnityWebRequest request) =>
+                {
+                    try
+                    {
+                        GroupUpResponseDTO member =
+                            JsonConvert.DeserializeObject<GroupUpResponseDTO>(response);
+                        onSuccessDelegate(member, request);
+                    }
+                    catch (Exception e)
+                    {
+                        L.Error(
+                            $"Couldn't parse member, consider updating Matchmaking SDK. {e.Message}"
+                        );
+                        throw;
+                    }
+                },
+                onErrorDelegate
+            );
+        }
+
+        public void GetGroupMember(
+            string groupID,
+            string memberID,
+            Action<GroupUpResponseDTO, UnityWebRequest> onSuccessDelegate,
+            Action<string, UnityWebRequest> onErrorDelegate
+        )
+        {
+            Request.Get(
+                $"{BaseUrl}/{PATH_GROUP_UP}/{groupID}/members/{memberID}",
+                AuthToken,
+                (string response, UnityWebRequest request) =>
+                {
+                    try
+                    {
+                        GroupUpResponseDTO details =
+                            JsonConvert.DeserializeObject<GroupUpResponseDTO>(response);
+                        onSuccessDelegate(details, request);
+                    }
+                    catch (Exception e)
+                    {
+                        L.Error(
+                            $"Couldn't parse details, consider updating Matchmaking SDK. {e.Message}"
+                        );
+                        throw;
+                    }
+                },
+                onErrorDelegate
+            );
+        }
+
+        public void UpdateGroupMember(
+            string groupID,
+            string memberID,
+            bool isReady,
+            Action<GroupUpResponseDTO, UnityWebRequest> onSuccessDelegate,
+            Action<string, UnityWebRequest> onErrorDelegate
+        )
+        {
+            Request.Patch(
+                $"{BaseUrl}/{PATH_GROUP_UP}/{groupID}/members/{memberID}",
+                AuthToken,
+                JsonConvert.SerializeObject(
+                    new Dictionary<string, bool> { { "is_ready", isReady } }
+                ),
+                (string response, UnityWebRequest request) =>
+                {
+                    try
+                    {
+                        GroupUpResponseDTO member =
+                            JsonConvert.DeserializeObject<GroupUpResponseDTO>(response);
+                        onSuccessDelegate(member, request);
+                    }
+                    catch (Exception e)
+                    {
+                        L.Error(
+                            $"Couldn't parse member, consider updating Matchmaking SDK. {e.Message}"
+                        );
+                        throw;
+                    }
+                },
+                onErrorDelegate
+            );
+        }
+
+        public void DeleteGroupMember(
+            string groupID,
+            string memberID,
+            Action<UnityWebRequest> onSuccessDelegate,
+            Action<string, UnityWebRequest> onErrorDelegate
+        )
+        {
+            Request.Delete(
+                $"{BaseUrl}/{PATH_GROUP_UP}/{groupID}/members/{memberID}",
                 AuthToken,
                 (string response, UnityWebRequest request) =>
                 {

@@ -14,7 +14,7 @@ namespace Edgegap.Matchmaking
     public class Client<T, A>
         where T : TicketsRequestDTO<A>
     {
-        private Api<T, A> MatchmakingApi;
+        private Api MatchmakingApi;
         private Edgegap.Ping Ping;
 
         public MonoBehaviour Handler;
@@ -33,6 +33,8 @@ namespace Edgegap.Matchmaking
 
         public Observable<MonitorResponseDTO> Monitor { get; private set; } =
             new Observable<MonitorResponseDTO>() { };
+
+        [Obsolete("Managing tickets in clients is deprecated, see the Group Up flow instead")]
         public Observable<TicketResponseDTO> Assignment { get; private set; } =
             new Observable<TicketResponseDTO>() { };
         private protected bool Polling = false;
@@ -119,6 +121,9 @@ namespace Edgegap.Matchmaking
             Handler.StartCoroutine(GetLatencies(beacons, onCompleteDelegate, requests));
         }
 
+        [Obsolete(
+            "Managing tickets in clients is deprecated, see the Group Up flow instead"
+        )]
         public void StartMatchmaking(T ticket, bool abandon = false)
         {
             if (Assignment.Current is not null && !abandon)
@@ -129,7 +134,7 @@ namespace Edgegap.Matchmaking
 
             StopMatchmaking(() =>
             {
-                MatchmakingApi.CreateTicketAsync(
+                MatchmakingApi.CreateTicketAsync<T, A>(
                     ticket,
                     (TicketResponseDTO assignment, UnityWebRequest request) =>
                     {
@@ -146,6 +151,9 @@ namespace Edgegap.Matchmaking
             });
         }
 
+        [Obsolete(
+            "Managing tickets in clients is deprecated, see the Group Up flow instead"
+        )]
         public void ResumeMatchmaking(TicketResponseDTO assignment, bool abandon = false)
         {
             if (Assignment.Current is not null && !abandon)
@@ -162,6 +170,9 @@ namespace Edgegap.Matchmaking
             });
         }
 
+        [Obsolete(
+            "Managing group tickets in clients is deprecated, please use Group Up flow instead."
+        )]
         public void StartGroupMatchmaking(
             T hostTicket,
             List<T> memberTickets,
@@ -181,7 +192,7 @@ namespace Edgegap.Matchmaking
 
             StopMatchmaking(() =>
             {
-                MatchmakingApi.CreateGroupTicketAsync(
+                MatchmakingApi.CreateGroupTicketAsync<GroupTicketsRequestDTO<A>, A>(
                     groupTicket,
                     (GroupTicketsResponseDTO assignment, UnityWebRequest request) =>
                     {
@@ -199,11 +210,17 @@ namespace Edgegap.Matchmaking
             });
         }
 
+        [Obsolete(
+            "Managing group tickets in clients is deprecated, please use Group Up flow instead."
+        )]
         public void JoinGroupMatchmaking(TicketResponseDTO assignment, bool abandon = false)
         {
             ResumeMatchmaking(assignment, abandon);
         }
 
+        [Obsolete(
+            "Managing tickets in clients is deprecated, see the Group Up flow instead"
+        )]
         public void StopMatchmaking(Action onCompletedDelegate = null)
         {
             Polling = false;
@@ -255,6 +272,9 @@ namespace Edgegap.Matchmaking
         #endregion
 
         #region Initialization
+        [Obsolete(
+            "Managing tickets in clients is deprecated, see the Group Up flow instead"
+        )]
         public void Initialize(
             UnityAction<
                 Observable<MonitorResponseDTO>,
@@ -279,7 +299,7 @@ namespace Edgegap.Matchmaking
                 throw new Exception("AuthToken not declared.");
             }
 
-            MatchmakingApi = new Api<T, A>(Handler, AuthToken, BaseUrl);
+            MatchmakingApi = new Api(Handler, AuthToken, BaseUrl);
             Ping = new Edgegap.Ping(Handler);
 
             L.SubscribeLogger(Monitor, "MM", "Monitor");
@@ -293,7 +313,6 @@ namespace Edgegap.Matchmaking
         #endregion
 
         #region Internals
-
         internal void StartPollingAssignment(int consecutiveErrors = 0)
         {
             if (!Polling)

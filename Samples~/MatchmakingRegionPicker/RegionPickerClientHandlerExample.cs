@@ -8,10 +8,10 @@ using UnityEngine.Networking;
 using UnityEngine.UI;
 using L = Edgegap.Logger;
 using MyTicketsAttributes = Edgegap.Matchmaking.LatenciesAttributesDTO;
-using MyTicketsRequestDTO = Edgegap.Matchmaking.SimpleTicketsRequestDTO;
+using MyGroupUpRequestDTO = Edgegap.Matchmaking.SimpleGroupUpRequestDTO;
 
-// todo replace SimpleTicketsRequestDTO with CustomTicketsRequestDTO
 // todo replace LatenciesAttributesDTO with CustomTicketsAttributes
+// todo replace SimpleGroupUpRequestDTO with CustomGroupUpRequestDTO
 
 public class RegionPickerClientHandlerExample : MonoBehaviour
 {
@@ -39,7 +39,10 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
     public bool LogPollingUpdates = false;
     #endregion
 
-    public Client<MyTicketsRequestDTO, MyTicketsAttributes> MatchmakingClient;
+    public GroupClient<
+            MyGroupUpRequestDTO, 
+            MyTicketsAttributes
+        > MatchmakingClient;
 
     #region Region Picker UI
     public GameObject ScrollListContainer;
@@ -122,7 +125,10 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
     public void Start()
     {
         // configure Matchmaking
-        MatchmakingClient = new Client<MyTicketsRequestDTO, MyTicketsAttributes>(
+        MatchmakingClient = new GroupClient<
+            MyGroupUpRequestDTO, 
+            MyTicketsAttributes
+        >(
             this,
             BaseUrl,
             AuthToken,
@@ -222,9 +228,9 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
                     MatchmakingClient.StopMatchmaking();
                 }
             },
-            // handle ticket assignment
+            // handle group assignment
             (
-                Observable<TicketResponseDTO> assignment,
+                Observable<GroupUpResponseDTO> group,
                 ObservableActionType action,
                 string message
             ) =>
@@ -244,7 +250,7 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
                 if (
                     action == ObservableActionType.Update
                     && message.Contains("updated")
-                    && assignment.Current.Status == "MATCH_FOUND"
+                    && group.Current.Status == "MATCH_FOUND"
                 )
                 {
                     StatusDisplay.text = "Match found, awaiting assignment";
@@ -255,7 +261,7 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
                     (
                         action == ObservableActionType.Update
                         && message.Contains("updated")
-                        && assignment.Current.Status == "HOST_ASSIGNED"
+                        && group.Current.Status == "HOST_ASSIGNED"
                     )
                     || (
                         action == ObservableActionType.Log
@@ -271,7 +277,7 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
                     // todo join game on pre-defined game port
                     StatusDisplay.text = "Host assigned, joining game";
                     L.Log(
-                        $"MM ClientHandler | Joining game: {assignment.Current.Assignment.Ports["gameport"].Link}"
+                        $"MM ClientHandler | Joining game: {group.Current.Assignment.Ports["gameport"].Link}"
                     );
 
                     DisconnectButton.GetComponentInChildren<Text>().text = "Disconnect";
@@ -282,7 +288,7 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
                 if (
                     action == ObservableActionType.Update
                         && message.Contains("removed")
-                        && assignment.Previous?.Status == "HOST_ASSIGNED"
+                        && group.Previous?.Status == "HOST_ASSIGNED"
                 )
                 {
                     DisconnectButton.GetComponent<Button>().interactable = true;
@@ -293,7 +299,7 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
 
     public void OnApplicationPause(bool pause)
     {
-        if (!DeleteTicketOnPause || MatchmakingClient.Assignment.Current is null)
+        if (!DeleteTicketOnPause || MatchmakingClient.Group.Current is null)
             return;
         StopMatchmaking();
     }
@@ -305,28 +311,9 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
         StopMatchmaking();
     }
 
-    public void StartMatchmaking(MyTicketsRequestDTO ticket)
+    public void StartMatchmaking(Dictionary<string, float> pings, bool isReady)
     {
-        MatchmakingClient.StartMatchmaking(ticket);
-    }
-
-    // group members need to share tickets to group host to start matchmaking
-    public void StartGroupMatchmaking(
-        MyTicketsRequestDTO hostTicket,
-        List<MyTicketsRequestDTO> memberTickets,
-        bool abandon = false
-    )
-    {
-        MatchmakingClient.StartGroupMatchmaking(
-            hostTicket,
-            memberTickets,
-            (List<TicketResponseDTO> memberAssignments, UnityWebRequest request) =>
-            {
-                // todo send assignment IDs to group members to track their tickets
-                L.Log($"MM ClientHandler | Member assignemnts: {memberAssignments}");
-            },
-            abandon
-        );
+        MatchmakingClient.CreateGroup(new MyGroupUpRequestDTO(pings, isReady));
     }
 
     public void StopMatchmaking()
@@ -337,8 +324,7 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
 
     public void OnHubBtnClick(string cityName, float ping)
     {
-        MyTicketsRequestDTO ticket = new MyTicketsRequestDTO(new Dictionary<string, float> { { cityName, ping } });
-        MatchmakingClient.StartMatchmaking(ticket);
+        StartMatchmaking(new Dictionary<string, float> { { cityName, ping } }, true);
 
         foreach (Transform child in ScrollListContainer.transform)
         {
