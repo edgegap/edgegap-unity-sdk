@@ -221,7 +221,7 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
                         }
                     );
                 }
-                else if (action == ObservableActionType.Error || message == "unhealthy")
+                else if (message != "healthy")
                 {
                     // todo handle outage/maintenance
                     L.Error($"MM ClientHandler | Service is unhealthy.\n{monitor.Current}");
