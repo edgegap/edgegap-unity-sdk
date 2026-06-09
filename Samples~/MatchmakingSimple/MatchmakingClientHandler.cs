@@ -121,7 +121,8 @@ public class MatchmakingClientHandler : MonoBehaviour
                 if (
                     action == ObservableActionType.Update
                     && (
-                        message.Contains("received")
+                        message.Contains("created")
+                        || message.Contains("joined")
                         || message.Contains("updated")
                         || message.Contains("abandon")
                     )
