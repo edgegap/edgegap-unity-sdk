@@ -38,6 +38,12 @@ public class ServerBrowserClientHandler : MonoBehaviour
 
     public void Start()
     {
+        if (Application.isBatchMode)
+        {
+            L.Log("SB ClientHandler | Destroying self in server environment.");
+            Destroy(this.gameObject);
+        }
+
         ClientAgent = new ClientAgent<MyInstanceMetadata, MySlotMetadata>(
             this,
             BaseUrl,
