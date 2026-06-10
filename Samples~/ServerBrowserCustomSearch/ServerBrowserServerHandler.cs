@@ -85,6 +85,12 @@ public class ServerBrowserServerHandler : MonoBehaviour
         BaseUrl ??= env["SB_BASE_URL"]?.ToString();
         ServerToken ??= env["SB_SERVER_TOKEN"]?.ToString();
 
+        if (!MockEnv && !Application.isBatchMode)
+        {
+            L.Log("SB ServerHandler | Destroying self in client environment.");
+            Destroy(this.gameObject);
+        }
+
         ServerAgent = new ServerAgent<MyInstanceMetadata, MySlotMetadata>(
             this,
             BaseUrl,
