@@ -35,7 +35,7 @@ namespace Edgegap.Matchmaking
             new Observable<MonitorResponseDTO>() { };
         public Observable<GroupUpResponseDTO> Group { get; private set; } =
             new Observable<GroupUpResponseDTO>() { };
-        private protected bool Owner = false;
+        public bool Owner { get; private set; } = false;
         private protected bool Polling = false;
 
         public GroupClient(
