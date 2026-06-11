@@ -302,7 +302,7 @@ public class GroupUpClientHandlerExample : MonoBehaviour
                     && message.Contains("created")
                 )
                 {
-                    StatusDisplay.text = $"Group created.\nID: {group.Current.GroupID}";
+                    StatusDisplay.text = $"Group created, awaiting teammates.\nID: {group.Current.GroupID}";
                     Debug.Log($"Group created.\nID: {group.Current.GroupID}");
 
                     CreateGroupButton.gameObject.SetActive(false);
@@ -319,7 +319,7 @@ public class GroupUpClientHandlerExample : MonoBehaviour
                     && message.Contains("joined")
                 )
                 {
-                    StatusDisplay.text = "Group joined, awaiting other ready members.";
+                    StatusDisplay.text = "Group joined, awaiting other ready teammates.";
 
                     JoinGroupButton.gameObject.SetActive(false);
                     IdInputField.gameObject.SetActive(false);
