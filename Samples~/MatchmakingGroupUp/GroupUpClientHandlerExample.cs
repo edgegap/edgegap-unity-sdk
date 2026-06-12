@@ -28,12 +28,11 @@ public class GroupUpClientHandlerExample : MonoBehaviour
 
     [Header("Expiration and Cleanup")]
     public float RemoveAssignmentSeconds = 30f;
-    public bool DeleteTicketOnPause = false;
-    public bool DeleteTicketOnQuit = true;
+    public bool DeleteGroupOnPause = false;
+    public bool DeleteGroupOnQuit = true;
 
     [Header("Logging")]
-    public bool LogTicketUpdates = true;
-    public bool LogAssignmentUpdates = true;
+    public bool LogGroupUpdates = true;
     public bool LogPollingUpdates = false;
     #endregion
 
@@ -115,7 +114,7 @@ public class GroupUpClientHandlerExample : MonoBehaviour
                 }
                 else
                 {
-                    SetReadyButton.GetComponent<Button>().onClick.AddListener(BecomeReady);
+                    SetReadyButton.GetComponent<Button>().onClick.AddListener(SetReady);
                     SetReadyButton.gameObject.SetActive(false);
                 }
             }
@@ -193,7 +192,7 @@ public class GroupUpClientHandlerExample : MonoBehaviour
             PollingBackoffSeconds,
             MaxConsecutivePollingErrors,
             RemoveAssignmentSeconds,
-            LogAssignmentUpdates,
+            LogGroupUpdates,
             LogPollingUpdates
         );
 
@@ -302,7 +301,7 @@ public class GroupUpClientHandlerExample : MonoBehaviour
                     && message.Contains("created")
                 )
                 {
-                    StatusDisplay.text = $"Group created, awaiting teammates.\nID: {group.Current.GroupID}";
+                    StatusDisplay.text = $"Group created, awaiting members.\nID: {group.Current.GroupID}";
                     Debug.Log($"Group created.\nID: {group.Current.GroupID}");
 
                     CreateGroupButton.gameObject.SetActive(false);
@@ -319,7 +318,7 @@ public class GroupUpClientHandlerExample : MonoBehaviour
                     && message.Contains("joined")
                 )
                 {
-                    StatusDisplay.text = "Group joined, awaiting other ready teammates.";
+                    StatusDisplay.text = "Group joined, waiting for group owner to set ready.";
 
                     JoinGroupButton.gameObject.SetActive(false);
                     IdInputField.gameObject.SetActive(false);
@@ -335,6 +334,7 @@ public class GroupUpClientHandlerExample : MonoBehaviour
                 )
                 {
                     StatusDisplay.text = "Matchmaking started, searching...";
+                    SetReadyButton.interactable = false;
                 }
 
                 if (
@@ -366,40 +366,48 @@ public class GroupUpClientHandlerExample : MonoBehaviour
 
     public void OnApplicationPause(bool pause)
     {
-        if (!DeleteTicketOnPause || MatchmakingClient.Group.Current is null)
+        if (!DeleteGroupOnPause || MatchmakingClient.Group.Current is null)
             return;
         StopMatchmaking();
     }
 
     public void OnApplicationQuit()
     {
-        if (!DeleteTicketOnQuit)
+        if (!DeleteGroupOnQuit)
             return;
         StopMatchmaking();
     }
 
-    public void StartMatchmaking(Dictionary<string, float> pings, bool isReady)
+    public void StartMatchmaking(Dictionary<string, float> pings, bool isReady, string groupID = null)
     {
         CreateGroupButton.interactable = false;
         JoinGroupButton.interactable = false;
         IdInputField.interactable = false;
 
-        MatchmakingClient.CreateGroup(new MyGroupUpRequestDTO(pings, isReady));
+        if (groupID is null)
+        {
+            MatchmakingClient.CreateGroup(new MyGroupUpRequestDTO(pings, isReady));
+        }
+        else
+        {
+            MatchmakingClient.JoinGroup(new MyGroupUpRequestDTO(pings, isReady), groupID);
+        }
     }
 
-    public void StartMatchmaking(Dictionary<string, float> pings, bool isReady, string groupID)
+    public void SetReady()
     {
-        CreateGroupButton.interactable = false;
-        JoinGroupButton.interactable = false;
-        IdInputField.interactable = false;
+        bool newState = !MatchmakingClient.Group.Current.IsReady;
 
-        MatchmakingClient.JoinGroup(new MyGroupUpRequestDTO(pings, isReady), groupID);
-    }
+        if (newState)
+        {
+            SetReadyButton.GetComponentInChildren<Text>().text = "Waiting";
+        }
+        else
+        {
+            SetReadyButton.GetComponentInChildren<Text>().text = "Set Ready";
+        }
 
-    public void BecomeReady()
-    {
-        SetReadyButton.interactable = false;
-        MatchmakingClient.SetReady(true);
+        MatchmakingClient.SetReady(newState);
     }
 
     public void StopMatchmaking()
@@ -412,7 +420,7 @@ public class GroupUpClientHandlerExample : MonoBehaviour
         {
             StatusDisplay.text = "Leaving group.";
         }
-        
+
         SetReadyButton.interactable = false;
         DeleteGroupButton.interactable = false;
         LeaveGroupButton.interactable = false;
