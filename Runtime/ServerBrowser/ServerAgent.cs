@@ -450,11 +450,19 @@ namespace Edgegap.ServerBrowser
             {
                 FlushingUpdates = true;
             }
+
+            if (PendingInstanceUpdates.IsEmpty)
+            {
+                FlushingUpdates = false;
+                return;
+            }
+
             ServerInstanceMetadata mergedUpdate = Instance.Current.Metadata;
             while (PendingInstanceUpdates.TryDequeue(out ServerInstanceMetadata update))
             {
                 mergedUpdate = mergedUpdate.Merge(update);
             }
+
             Api.UpdateServerInstance(
                 Instance.Current.RequestID,
                 new InstanceUpdateDTO<ServerInstanceMetadata>() { Metadata = mergedUpdate },
@@ -463,6 +471,7 @@ namespace Edgegap.ServerBrowser
                     UnityWebRequest request
                 ) =>
                 {
+                    response.Slots = Instance.Current.Slots; // patch doesn't return slots in SB 1.0.0
                     Instance._Update(response, "instance updated");
                     FlushingUpdates = false;
                 },
