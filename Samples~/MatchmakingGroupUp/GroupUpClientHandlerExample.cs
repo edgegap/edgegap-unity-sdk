@@ -211,9 +211,7 @@ public class GroupUpClientHandlerExample : MonoBehaviour
                     {
                         // todo update UI
                         StatusDisplay.text = "Fetching beacons...";
-                        CreateGroupButton.interactable = false;
-                        JoinGroupButton.interactable = false;
-                        IdInputField.interactable = false;
+                        DisableButtons();
 
                         MatchmakingClient.Beacons(
                             (BeaconsResponseDTO beacons) =>
@@ -226,13 +224,7 @@ public class GroupUpClientHandlerExample : MonoBehaviour
                                     {
                                         Pings = pings;
                                         StatusDisplay.text = "";
-                                        CreateGroupButton.interactable = true;
-                                        IdInputField.interactable = true;
-
-                                        if (!string.IsNullOrEmpty(IdInputField.text))
-                                        {
-                                            JoinGroupButton.GetComponent<Button>().interactable = true;
-                                        }
+                                        ResetButtons();
                                     }
                                 );
                             },
@@ -259,6 +251,23 @@ public class GroupUpClientHandlerExample : MonoBehaviour
             ) =>
             {
                 if (
+                    action == ObservableActionType.Error
+                    && group.Current is null
+                )
+                {
+                    ResetButtons();
+                }
+
+                if (
+                    action == ObservableActionType.Warn
+                    && message.Contains("member update failed")
+                )
+                {
+                    SetReadyButton.interactable = false;
+                    EnableStopButton();
+                }
+
+                if (
                     action == ObservableActionType.Update
                     && message.Contains("updated")
                 )
@@ -275,24 +284,6 @@ public class GroupUpClientHandlerExample : MonoBehaviour
                 )
                 {
                     StatusDisplay.text = "Disconnected from group.";
-
-                    SetReadyButton.gameObject.SetActive(false);
-                    DeleteGroupButton.gameObject.SetActive(false);
-                    LeaveGroupButton.gameObject.SetActive(false);
-
-
-                    CreateGroupButton.gameObject.SetActive(true);
-                    CreateGroupButton.interactable = true;
-
-                    IdInputField.gameObject.SetActive(true);
-                    IdInputField.interactable = true;
-
-                    JoinGroupButton.gameObject.SetActive(true);
-                    if (!string.IsNullOrEmpty(IdInputField.text))
-                    {
-                        JoinGroupButton.GetComponent<Button>().interactable = true;
-                    }
-
                     MatchmakingClient.Status();
                 }
 
@@ -329,6 +320,16 @@ public class GroupUpClientHandlerExample : MonoBehaviour
 
                 if (
                     action == ObservableActionType.Update
+                    && message.Contains("member updated")
+                )
+                {
+                    SetReadyButtonText();
+                    SetReadyButton.interactable = true;
+                    EnableStopButton();
+                }
+
+                if (
+                    action == ObservableActionType.Update
                     && message.Contains("updated")
                     && group.Current.Status == "SEARCHING"
                 )
@@ -344,8 +345,7 @@ public class GroupUpClientHandlerExample : MonoBehaviour
                 )
                 {
                     StatusDisplay.text = "Match found, awaiting assignment.";
-                    DeleteGroupButton.interactable = false;
-                    LeaveGroupButton.interactable = false;
+                    DisableButtons();
                 }
 
                 if (
@@ -380,9 +380,7 @@ public class GroupUpClientHandlerExample : MonoBehaviour
 
     public void StartMatchmaking(Dictionary<string, float> pings, bool isReady, string groupID = null)
     {
-        CreateGroupButton.interactable = false;
-        JoinGroupButton.interactable = false;
-        IdInputField.interactable = false;
+        DisableButtons();
 
         if (groupID is null)
         {
@@ -396,17 +394,8 @@ public class GroupUpClientHandlerExample : MonoBehaviour
 
     public void SetReady()
     {
+        DisableButtons();
         bool newState = !MatchmakingClient.Group.Current.IsReady;
-
-        if (newState)
-        {
-            SetReadyButton.GetComponentInChildren<Text>().text = "Waiting";
-        }
-        else
-        {
-            SetReadyButton.GetComponentInChildren<Text>().text = "Set Ready";
-        }
-
         MatchmakingClient.SetReady(newState);
     }
 
@@ -421,10 +410,7 @@ public class GroupUpClientHandlerExample : MonoBehaviour
             StatusDisplay.text = "Leaving group.";
         }
 
-        SetReadyButton.interactable = false;
-        DeleteGroupButton.interactable = false;
-        LeaveGroupButton.interactable = false;
-
+        DisableButtons();
         MatchmakingClient.StopMatchmaking();
     }
 
@@ -432,11 +418,71 @@ public class GroupUpClientHandlerExample : MonoBehaviour
     {
         if (string.IsNullOrEmpty(newVal))
         {
-            JoinGroupButton.GetComponent<Button>().interactable = false;
+            JoinGroupButton.interactable = false;
         }
         else
         {
-            JoinGroupButton.GetComponent<Button>().interactable = true;
+            JoinGroupButton.interactable = true;
+        }
+    }
+
+    private void DisableButtons()
+    {
+        CreateGroupButton.interactable = false;
+        JoinGroupButton.interactable = false;
+        IdInputField.interactable = false;
+        SetReadyButton.interactable = false;
+        DeleteGroupButton.interactable = false;
+        LeaveGroupButton.interactable = false;
+    }
+
+    private void EnableStopButton()
+    {
+        if (MatchmakingClient.Owner)
+        {
+            DeleteGroupButton.interactable = true;
+        }
+        else
+        {
+            LeaveGroupButton.interactable = true;
+        }
+    }
+
+    private void ResetButtons()
+    {
+        SetReadyButton.GetComponentInChildren<Text>().text = "Set Ready";
+        SetReadyButton.interactable = false;
+        SetReadyButton.gameObject.SetActive(false);
+
+        DeleteGroupButton.interactable = false;
+        DeleteGroupButton.gameObject.SetActive(false);
+
+        LeaveGroupButton.interactable = false;
+        LeaveGroupButton.gameObject.SetActive(false);
+
+
+        CreateGroupButton.gameObject.SetActive(true);
+        CreateGroupButton.interactable = true;
+
+        IdInputField.gameObject.SetActive(true);
+        IdInputField.interactable = true;
+
+        JoinGroupButton.gameObject.SetActive(true);
+        if (!string.IsNullOrEmpty(IdInputField.text))
+        {
+            JoinGroupButton.interactable = true;
+        }
+    }
+
+    private void SetReadyButtonText()
+    {
+        if (MatchmakingClient.Group.Current.IsReady)
+        {
+            SetReadyButton.GetComponentInChildren<Text>().text = "Waiting";
+        }
+        else
+        {
+            SetReadyButton.GetComponentInChildren<Text>().text = "Set Ready";
         }
     }
 }
