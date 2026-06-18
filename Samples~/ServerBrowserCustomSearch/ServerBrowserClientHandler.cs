@@ -11,7 +11,7 @@ using MySlotMetadata = Edgegap.ServerBrowser.SimpleSlotMetadataDTO;
 
 public class ServerBrowserClientHandler : MonoBehaviour
 {
-    [Header("Matchmaker Instance")]
+    [Header("Server Browser Instance")]
     public string BaseUrl;
     public string ClientToken;
 
