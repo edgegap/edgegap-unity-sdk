@@ -11,7 +11,7 @@ using MySlotMetadata = Edgegap.ServerBrowser.SimpleSlotMetadataDTO;
 
 public class ServerBrowserClientHandler : MonoBehaviour
 {
-    [Header("Matchmaker Instance")]
+    [Header("Server Browser Instance")]
     public string BaseUrl;
     public string ClientToken;
 
@@ -43,7 +43,7 @@ public class ServerBrowserClientHandler : MonoBehaviour
             L.Log("SB ClientHandler | Destroying self in server environment.");
             Destroy(this.gameObject);
         }
-    
+
         ClientAgent = new ClientAgent<MyInstanceMetadata, MySlotMetadata>(
             this,
             BaseUrl,
