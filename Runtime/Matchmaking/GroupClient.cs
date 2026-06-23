@@ -35,7 +35,7 @@ namespace Edgegap.Matchmaking
             new Observable<MonitorResponseDTO>() { };
         public Observable<GroupUpResponseDTO> Group { get; private set; } =
             new Observable<GroupUpResponseDTO>() { };
-        private protected bool Owner = false;
+        public bool Owner { get; private set; } = false;
         private protected bool Polling = false;
 
         public GroupClient(
@@ -158,7 +158,6 @@ namespace Edgegap.Matchmaking
                     (string error, UnityWebRequest request) =>
                     {
                         Group._Error($"group create failed\n{error}");
-                        StopMatchmaking();
                     }
                 );
             });
@@ -220,6 +219,10 @@ namespace Edgegap.Matchmaking
                     if (request.responseCode == 404)
                     {
                         Group._Error($"group not found\n{error}");
+                    }
+                    else if (request.responseCode == 409)
+                    {
+                        Group._Notify("member update failed", ObservableActionType.Warn);
                     }
                     else
                     {

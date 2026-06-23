@@ -34,6 +34,11 @@
       "displayName": "Matchmaking - Region Picker UI",
       "description": "Explore UI integration with manual region selection.",
       "path": "Samples~/MatchmakingRegionPicker"
+    },
+    {
+      "displayName": "Matchmaking - Group Up UI",
+      "description": "Explore UI integration with the group-up flow.",
+      "path": "Samples~/MatchmakingGroupUp"
     }
   ],
   "dependencies": {
