@@ -19,6 +19,7 @@ namespace Edgegap.Matchmaking
         internal string PATH_TICKETS = "tickets";
         internal string PATH_GROUP_TICKETS = "group-tickets";
         internal string PATH_GROUP_UP = "groups";
+        internal string PATH_BACKFILL = "backfills";
 
         public Api(MonoBehaviour parent, string authToken, string baseUrl)
         {
@@ -27,6 +28,7 @@ namespace Edgegap.Matchmaking
             BaseUrl = baseUrl;
         }
 
+        #region Utility
         public void GetMonitor(
             Action<MonitorResponseDTO, UnityWebRequest> onSuccessDelegate,
             Action<string, UnityWebRequest> onErrorDelegate
@@ -82,7 +84,9 @@ namespace Edgegap.Matchmaking
                 onErrorDelegate
             );
         }
+        #endregion
 
+        #region Server-to-Server Tickets
         public void CreateTicketAsync<T, A>(
             T ticket,
             Action<TicketResponseDTO, UnityWebRequest> onSuccessDelegate,
@@ -190,7 +194,9 @@ namespace Edgegap.Matchmaking
                 onErrorDelegate
             );
         }
+        #endregion
 
+        #region Client Group-Up
         public void CreateGroup<G, A>(
             G group,
             Action<GroupUpResponseDTO, UnityWebRequest> onSuccessDelegate,
@@ -381,5 +387,23 @@ namespace Edgegap.Matchmaking
                 onErrorDelegate
             );
         }
+        #endregion
+
+        #region Server Backfill
+        public void CreateBackfill()
+        {
+            //MTODO
+        }
+
+        public void GetBackfill()
+        {
+            //MTODO
+        }
+
+        public void DeleteBackfill()
+        {
+            //MTODO
+        }
+        #endregion
     }
 }
