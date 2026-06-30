@@ -390,19 +390,83 @@ namespace Edgegap.Matchmaking
         #endregion
 
         #region Server Backfill
-        public void CreateBackfill()
+        public void CreateBackfill<B, A>(
+            B backfill,
+            Action<BackfillResponseDTO<A>, UnityWebRequest> onSuccessDelegate,
+            Action<string, UnityWebRequest> onErrorDelegate
+        )
+            where B : BackfillRequestDTO<A>
         {
-            //MTODO
+            Request.Post(
+                $"{BaseUrl}/{PATH_BACKFILL}",
+                AuthToken,
+                JsonConvert.SerializeObject(backfill),
+                (string response, UnityWebRequest request) =>
+                {
+                    try
+                    {
+                        BackfillResponseDTO<A> backfillRes = JsonConvert.DeserializeObject<
+                            BackfillResponseDTO<A>
+                        >(response);
+                        onSuccessDelegate(backfillRes, request);
+                    }
+                    catch (Exception e)
+                    {
+                        L.Error(
+                            $"Couldn't parse backfill, consider updating Matchmaking SDK. {e.Message}"
+                        );
+                        throw;
+                    }
+                },
+                onErrorDelegate
+            );
         }
 
-        public void GetBackfill()
+        public void GetBackfill<A>(
+            string backfillID,
+            Action<BackfillResponseDTO<A>, UnityWebRequest> onSuccessDelegate,
+            Action<string, UnityWebRequest> onErrorDelegate
+        )
         {
-            //MTODO
+            Request.Get(
+                $"{BaseUrl}/{PATH_BACKFILL}/{backfillID}",
+                AuthToken,
+                (string response, UnityWebRequest request) =>
+                {
+                    try
+                    {
+                        BackfillResponseDTO<A> backfillRes = JsonConvert.DeserializeObject<
+                            BackfillResponseDTO<A>
+                        >(response);
+                        onSuccessDelegate(backfillRes, request);
+                    }
+                    catch (Exception e)
+                    {
+                        L.Error(
+                            $"Couldn't parse backfill, consider updating Matchmaking SDK. {e.Message}"
+                        );
+                        throw;
+                    }
+                },
+                onErrorDelegate
+            );
         }
 
-        public void DeleteBackfill()
+        public void DeleteBackfill(
+            string backfillID,
+            Action<UnityWebRequest> onSuccessDelegate,
+            Action<string, UnityWebRequest> onErrorDelegate
+        )
         {
-            //MTODO
+            Request.Delete(
+                $"{BaseUrl}/{PATH_BACKFILL}/{backfillID}",
+                AuthToken,
+                (string response, UnityWebRequest request) =>
+                {
+                    onSuccessDelegate(request);
+                },
+                onErrorDelegate
+            );
         }
         #endregion
     }
