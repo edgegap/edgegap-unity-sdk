@@ -2,9 +2,10 @@
 
 This SDK is an optional starter kit for Unity users, which can be extended and customized later.
 - [Getting Started With Matchmaking](https://docs.edgegap.com/unity/matchmaking)
-- [Getting Started With Server Browser](https://docs.edgegap.com/unity/server-browser) (video coming soon)
+- [Getting Started With Server Browser](https://docs.edgegap.com/unity/server-browser)
 
-[![Watch the video](https://img.youtube.com/vi/HxtvzvJ1FTk/0.jpg)](https://www.youtube.com/watch?v=HxtvzvJ1FTk)
+[![Getting Started With Matchmaking](https://img.youtube.com/vi/LupYTyzgz6g/0.jpg)](https://www.youtube.com/watch?v=LupYTyzgz6g)
+[![Getting Started With Server Browser](https://img.youtube.com/vi/P8xWrD4UCxg/0.jpg)](https://www.youtube.com/watch?v=P8xWrD4UCxg)
 
 This plugin has been tested, and supports Unity versions 2021.3.0f1+, including Unity 6 LTS. This plugin is provided 100% free of charge, under Terms and Conditions of Free Tier.
 
@@ -47,11 +48,6 @@ Navigate to Edgegap SDK in Unity Package Manager and click **Update**.
 > Unity Editor shows `[Package Manager Window] Error adding package: https://github.com/edgegap/edgegap-unity-matchmaking-sdk.git`
 
 - If you’re adding our plugin via git URL, you will need to have a git client installed.
-
-> Unity Editor 2021 shows `failed to resolve assembly: 'Edgegap.Matchmaking.SDK...`
-
-- This is a known issue when using plugin with [Unity's Burst compiler](https://docs.unity3d.com/6000.0/Documentation/Manual/com.unity.burst.html).
-- Install plugin [via ZIP archive](#install-via-zip-archive) and delete `EdgegapMatchmakingSDK.asmdef` in the plugin folder to resolve this.
 
 > Visual Studio shows `type or namespace name could not be found` for Edgegap namespace.
 
