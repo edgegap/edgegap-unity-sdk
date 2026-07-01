@@ -12,14 +12,14 @@ namespace Edgegap.Matchmaking
         public string Profile;
 
         [JsonProperty("tickets")]
-        public Dictionary<string, BackfillTicketMemberDTO<A>> Tickets;
+        public Dictionary<string, InjectedTicketDTO<A>> Tickets;
 
         [JsonProperty("status")]
         public string Status;
 
 #nullable enable
         [JsonProperty("assigned_ticket")]
-        public BackfillTicketMemberDTO<A>? AssignedTicket;
+        public InjectedTicketDTO<A>? AssignedTicket;
 
 #nullable disable
 

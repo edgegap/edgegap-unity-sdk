@@ -1,5 +1,8 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
+using UnityEditor.PackageManager;
+using UnityEditor.PackageManager.Requests;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.Networking;
@@ -23,17 +26,25 @@ namespace Edgegap.Matchmaking
         public int RequestTimeoutSeconds;
         public float PollingBackoffSeconds;
         public int MaxConsecutivePollingErrors;
+        public float RemoveBackfillSeconds;
 
         public bool LogBackfillUpdates;
         public bool LogPollingUpdates;
 
         public Observable<MonitorResponseDTO> Monitor { get; private set; } =
             new Observable<MonitorResponseDTO>() { };
-        public Observable<BackfillResponseDTO<A>> Backfill { get; private set; } =
+        public Observable<BackfillResponseDTO<A>> Backfills { get; private set; } =
             new Observable<BackfillResponseDTO<A>>() { };
 
-        private protected DeploymentEnvironmentDTO DeploymentEnvs;
-        private protected MatchEnvironmentDTO<A> MatchEnvs;
+        public DeploymentEnvironmentDTO DeploymentEnvs { get; private set; }
+        public MatchEnvironmentDTO<A> MatchEnvs { get; private set; }
+
+        public Dictionary<string, InjectedTicketDTO<A>> AssignedTickets { get; private set; } =
+            new Dictionary<string, InjectedTicketDTO<A>>();
+
+        public Dictionary<string, BackfillResponseDTO<A>> OngoingBackfills { get; private set; } =
+            new Dictionary<string, BackfillResponseDTO<A>>();
+
         private protected bool Polling = false;
 
         public Server(
@@ -67,6 +78,11 @@ namespace Edgegap.Matchmaking
             LogPollingUpdates = logPollingUpdates;
         }
 
+        public void RemoveAssignedTicket(string ticketID)
+        {
+            AssignedTickets.Remove(ticketID);
+        }
+
         #region Server API
         public void Status()
         {
@@ -91,23 +107,74 @@ namespace Edgegap.Matchmaking
 
         public void AddBackfill(B backfill)
         {
-            // MTODO
-            //check current tickets + TargetPlayerCount
-            //api request
-            //call TrackTicket(ticket) on success
+            if (AssignedTickets.Count + OngoingBackfills.Count >= TargetPlayerCount)
+            {
+                Backfills._Error("maximum capacity currently reached");
+                return;
+            }
+
+            MatchmakingApi.CreateBackfill<B, A>(
+                backfill,
+                (BackfillResponseDTO<A> backfillRes, UnityWebRequest request) =>
+                {
+                    OngoingBackfills[backfillRes.ID] = backfillRes;
+                    Backfills._Update(backfillRes, "created");
+                    //MTODO delay polling new backfill
+                },
+                (string error, UnityWebRequest request) =>
+                {
+                    Backfills._Error($"backfill create failed\n{error}");
+                }
+            );
         }
 
-        public void RemoveBackfill(string backfillID)
+        public void GetBackfill(string backfillID)
         {
-            // MTODO
-            //check backfills => api request
-            //else check currents/on api success => UntrackTicket(backfillID)
+            //MTODO
+        }
+
+        public void RemoveBackfill(string backfillID, Action onCompletedDelegate = null)
+        {
+            if (!OngoingBackfills.ContainsKey(backfillID))
+            {
+                Backfills._Error("backfill not found");
+                return;
+            }
+
+            MatchmakingApi.DeleteBackfill(
+                backfillID,
+                (UnityWebRequest request) =>
+                {
+                    Backfills._Update(null, "abandoned");
+
+                    if (onCompletedDelegate is not null)
+                    {
+                        onCompletedDelegate();
+                    }
+                },
+                (string error, UnityWebRequest request) =>
+                {
+                    if (request.responseCode == 404)
+                    {
+                        Backfills._Update(null, $"abandon failed (ID {backfillID} not found)");
+                    }
+                    else
+                    {
+                        Backfills._Error($"abandon failed\n{error}");
+                    }
+
+                    if (onCompletedDelegate is not null)
+                    {
+                        onCompletedDelegate();
+                    }
+                }
+            );
         }
 
         public void RemoveAllBackfills()
         {
             Polling = false;
-            // MTODO foreach ticket call RemoveBackfill in parallel
+            //MTODO foreach ticket call RemoveBackfill in parallel
         }
         #endregion
 
@@ -135,14 +202,19 @@ namespace Edgegap.Matchmaking
                 throw new Exception("AuthToken not declared.");
             }
 
-            LoadEnvs();
             MatchmakingApi = new Api(Handler, AuthToken, BaseUrl);
 
             L.SubscribeLogger(Monitor, "MM", "Monitor");
             Monitor.Subscribe(onMonitorUpdate);
 
-            L.SubscribeLogger(Backfill, "MM", "Backfill", LogBackfillUpdates);
-            Backfill.Subscribe(onBackfillUpdate);
+            L.SubscribeLogger(Backfills, "MM", "Backfill", LogBackfillUpdates);
+            Backfills.Subscribe(onBackfillUpdate);
+
+            LoadEnvs();
+            foreach (KeyValuePair<string, InjectedTicketDTO<A>> t in MatchEnvs.Tickets)
+            {
+                AddAssignedTicket(t.Value);
+            }
 
             Status();
         }
@@ -154,18 +226,11 @@ namespace Edgegap.Matchmaking
             IDictionary envs = Environment.GetEnvironmentVariables();
             DeploymentEnvs = new DeploymentEnvironmentDTO(envs);
             MatchEnvs = new MatchEnvironmentDTO<A>(envs);
-
-            // MTODO foreach ticket TrackTicket(convertedTicket)
         }
 
-        internal void TrackTicket(BackfillTicketMemberDTO<A> ticket)
+        internal void AddAssignedTicket(InjectedTicketDTO<A> ticket)
         {
-            // MTODO add ticket to currents
-        }
-
-        internal void UntrackTicket(string ticketID)
-        {
-            // MTODO remove ticket from currents
+            AssignedTickets[ticket.ID] = ticket;
         }
         #endregion
     }

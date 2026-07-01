@@ -17,8 +17,11 @@ namespace Edgegap.Matchmaking
         [JsonProperty("group_id")]
         public string GroupID;
 
-        [JsonProperty("team_id")]
-        public string TeamID;
+#nullable enable
+        [JsonProperty("team_id", NullValueHandling = NullValueHandling.Ignore)]
+        public string? TeamID;
+
+#nullable disable
 
         [JsonProperty("attributes")]
         public A Attributes;

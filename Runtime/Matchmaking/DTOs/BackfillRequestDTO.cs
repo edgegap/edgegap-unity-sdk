@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace Edgegap.Matchmaking
 {
-    public class BackfillRequestDTO<A>
+    public abstract class BackfillRequestDTO<A>
     {
         [JsonProperty("profile")]
         public string Profile;
@@ -12,7 +12,13 @@ namespace Edgegap.Matchmaking
         public BackfillAttributes Attributes;
 
         [JsonProperty("tickets")]
-        public Dictionary<string, BackfillTicketMemberDTO<A>> Tickets;
+        public Dictionary<string, InjectedTicketDTO<A>> Tickets;
+
+        public BackfillRequestDTO(string profile, BackfillAttributes attributes)
+        {
+            Profile = profile;
+            Attributes = attributes;
+        }
 
         public override string ToString()
         {
@@ -25,9 +31,42 @@ namespace Edgegap.Matchmaking
         [JsonProperty("assignment")]
         public DeploymentDTO Assignment;
 
+        public BackfillAttributes(DeploymentDTO assignment)
+        {
+            Assignment = assignment;
+        }
+
         public override string ToString()
         {
             return JsonConvert.SerializeObject(this);
+        }
+    }
+
+    public class SimpleBackfillRequestDTO : BackfillRequestDTO<BackfillTicketAttributesDTO>
+    {
+        public SimpleBackfillRequestDTO(
+            string profile,
+            BackfillAttributes attributes,
+            Dictionary<string, InjectedTicketDTO<BackfillTicketAttributesDTO>> tickets
+        )
+            : base(profile, attributes)
+        {
+            Tickets = tickets;
+        }
+    }
+
+    public class BackfillTicketAttributesDTO : LatenciesAttributesDTO
+    {
+        [JsonProperty("backfill_group_size")]
+        public string[] BackfillGroupSize;
+
+        public BackfillTicketAttributesDTO(
+            Dictionary<string, float> beacons,
+            string[] backfillGroupSize
+        )
+            : base(beacons)
+        {
+            BackfillGroupSize = backfillGroupSize;
         }
     }
 }

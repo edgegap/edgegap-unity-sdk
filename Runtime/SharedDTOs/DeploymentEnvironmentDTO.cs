@@ -32,6 +32,8 @@ namespace Edgegap
 
         public string Fqdn => string.IsNullOrEmpty(RequestID) ? "" : $"{RequestID}.pr.edgegap.net";
 
+        public DeploymentDTO Deployment { get; private set; }
+
         public DeploymentEnvironmentDTO(IDictionary env)
         {
             foreach (DictionaryEntry entry in env)
@@ -106,6 +108,8 @@ namespace Edgegap
             {
                 port.Link ??= $"{Fqdn}:{port.External}";
             }
+
+            StoreDeploymentDTO();
         }
 
         public static string TryParseEnvVariableString(DictionaryEntry keyValuePair)
@@ -151,6 +155,11 @@ namespace Edgegap
         public override string ToString()
         {
             return JsonConvert.SerializeObject(this);
+        }
+
+        internal void StoreDeploymentDTO()
+        {
+            Deployment = new DeploymentDTO(Fqdn, PublicIP, PortMapping, Location);
         }
     }
 

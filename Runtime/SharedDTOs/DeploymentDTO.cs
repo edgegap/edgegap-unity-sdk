@@ -17,6 +17,19 @@ namespace Edgegap
         [JsonProperty("location")]
         public LocationDTO Location;
 
+        public DeploymentDTO(
+            string fqdn,
+            string publicIP,
+            Dictionary<string, PortMappingDTO> ports,
+            LocationDTO location
+        )
+        {
+            Fqdn = fqdn;
+            PublicIP = publicIP;
+            Ports = ports;
+            Location = location;
+        }
+
         public override string ToString()
         {
             return JsonConvert.SerializeObject(this);
