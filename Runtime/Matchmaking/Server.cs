@@ -1,11 +1,10 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditor.PackageManager;
-using UnityEditor.PackageManager.Requests;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.Networking;
+using Random = UnityEngine.Random;
 
 namespace Edgegap.Matchmaking
 {
@@ -119,7 +118,8 @@ namespace Edgegap.Matchmaking
                 {
                     OngoingBackfills[backfillRes.ID] = backfillRes;
                     Backfills._Update(backfillRes, "created");
-                    //MTODO delay polling new backfill
+                    Polling = true;
+                    Handler.StartCoroutine(DelayPollingBackfill(backfillRes.ID));
                 },
                 (string error, UnityWebRequest request) =>
                 {
@@ -128,16 +128,11 @@ namespace Edgegap.Matchmaking
             );
         }
 
-        public void GetBackfill(string backfillID)
-        {
-            //MTODO
-        }
-
         public void RemoveBackfill(string backfillID, Action onCompletedDelegate = null)
         {
             if (!OngoingBackfills.ContainsKey(backfillID))
             {
-                Backfills._Error("backfill not found");
+                Backfills._Error($"{backfillID} not found");
                 return;
             }
 
@@ -145,7 +140,8 @@ namespace Edgegap.Matchmaking
                 backfillID,
                 (UnityWebRequest request) =>
                 {
-                    Backfills._Update(null, "abandoned");
+                    Backfills._Update(null, $"{backfillID} abandoned");
+                    RemoveOngoingBackfill(backfillID);
 
                     if (onCompletedDelegate is not null)
                     {
@@ -156,11 +152,12 @@ namespace Edgegap.Matchmaking
                 {
                     if (request.responseCode == 404)
                     {
-                        Backfills._Update(null, $"abandon failed (ID {backfillID} not found)");
+                        Backfills._Update(null, $"{backfillID} abandon failed (not found)");
+                        RemoveOngoingBackfill(backfillID);
                     }
                     else
                     {
-                        Backfills._Error($"abandon failed\n{error}");
+                        Backfills._Error($"{backfillID} abandon failed\n{error}");
                     }
 
                     if (onCompletedDelegate is not null)
@@ -231,6 +228,77 @@ namespace Edgegap.Matchmaking
         internal void AddAssignedTicket(InjectedTicketDTO<A> ticket)
         {
             AssignedTickets[ticket.ID] = ticket;
+        }
+
+        internal void RemoveOngoingBackfill(string backfillID)
+        {
+            OngoingBackfills.Remove(backfillID);
+        }
+
+        internal void StartPollingBackfill(string backfillID, int consecutiveErrors = 0)
+        {
+            if (!Polling)
+            {
+                if (LogPollingUpdates)
+                {
+                    Backfills._Notify($"polling {backfillID} stopped");
+                }
+                return;
+            }
+
+            if (LogPollingUpdates)
+            {
+                Backfills._Notify(
+                    $"polling {backfillID} [{consecutiveErrors + 1}/{MaxConsecutivePollingErrors}]"
+                );
+            }
+
+            MatchmakingApi.GetBackfill<A>(
+                backfillID,
+                (BackfillResponseDTO<A> backfillRes, UnityWebRequest request) =>
+                {
+                    if (backfillRes.Status == "ASSIGNED")
+                    {
+                        AddAssignedTicket(backfillRes.AssignedTicket);
+                        RemoveOngoingBackfill(backfillID);
+                        Backfills._Update(backfillRes, $"{backfillID} assigned");
+                    }
+                    else
+                    {
+                        Handler.StartCoroutine(DelayPollingBackfill(backfillID));
+                    }
+                },
+                (string error, UnityWebRequest request) =>
+                {
+                    if (consecutiveErrors + 1 > MaxConsecutivePollingErrors)
+                    {
+                        Backfills._Error(
+                            $"polling {backfillID} failed, reached maximum retries\n{error}"
+                        );
+                        RemoveBackfill(backfillID);
+                    }
+                    else
+                    {
+                        if (request.responseCode == 429 || request.responseCode >= 500)
+                        {
+                            Handler.StartCoroutine(
+                                DelayPollingBackfill(backfillID, consecutiveErrors + 1)
+                            );
+                        }
+                        else
+                        {
+                            Backfills._Error($"polling {backfillID} failed\n{error}");
+                            RemoveBackfill(backfillID);
+                        }
+                    }
+                }
+            );
+        }
+
+        internal IEnumerator DelayPollingBackfill(string backfillID, int consecutiveErrors = 0)
+        {
+            yield return new WaitForSeconds(PollingBackoffSeconds + (0.1f * Random.value));
+            StartPollingBackfill(backfillID, consecutiveErrors);
         }
         #endregion
     }

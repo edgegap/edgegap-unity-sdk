@@ -1,8 +1,6 @@
 using Edgegap;
 using Edgegap.Matchmaking;
-using System.Collections.Generic;
 using UnityEngine;
-using L = Edgegap.Logger;
 using MyBackfillRequestDTO = Edgegap.Matchmaking.SimpleBackfillRequestDTO;
 using MyTicketsAttributes = Edgegap.Matchmaking.BackfillTicketAttributesDTO;
 
@@ -90,14 +88,9 @@ public class BackfillServerHandlerExample : MonoBehaviour
                 string message
             ) =>
             {
-                //MTODO
-                /*
-                if backfill create fail || backfill assigned -> --OngoingRequests
-                 */
-
                 if (
-                    action == ObservableActionType.Error
-                    && message.Contains("create failed")
+                    (action == ObservableActionType.Error && message.Contains("create failed"))
+                    || (action == ObservableActionType.Update && message.Contains("assigned"))
                 )
                 {
                     --OngoingRequests;
@@ -111,13 +104,15 @@ public class BackfillServerHandlerExample : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (!BackfillStopped)
+        if (
+            !BackfillStopped
+            && MatchmakingServer.AssignedTickets.Count + OngoingRequests < TargetPlayerCount
+        )
         {
-            if (MatchmakingServer.AssignedTickets.Count + OngoingRequests < TargetPlayerCount)
-            {
-                StartNewBackfill();
-            }
+            StartNewBackfill();
         }
+
+        // todo check for leaving players => MatchmakingServer.RemoveAssignedTicket(ticketID);
     }
 
     public void OnApplicationQuit()
@@ -133,8 +128,8 @@ public class BackfillServerHandlerExample : MonoBehaviour
 
         MyBackfillRequestDTO backfill = new MyBackfillRequestDTO(
             MatchmakingServer.MatchEnvs.MatchProfile,
-            BackfillAttributes, 
-           MatchmakingServer.AssignedTickets
+            BackfillAttributes,
+            MatchmakingServer.AssignedTickets
         );
 
         MatchmakingServer.AddBackfill(backfill);
