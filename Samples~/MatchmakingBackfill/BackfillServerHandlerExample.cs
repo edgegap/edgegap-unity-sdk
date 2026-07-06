@@ -1,6 +1,7 @@
 using Edgegap;
 using Edgegap.Matchmaking;
 using UnityEngine;
+using L = Edgegap.Logger;
 using MyBackfillRequestDTO = Edgegap.Matchmaking.SimpleBackfillRequestDTO;
 using MyTicketsAttributes = Edgegap.Matchmaking.BackfillTicketAttributesDTO;
 
@@ -28,7 +29,6 @@ public class BackfillServerHandlerExample : MonoBehaviour
 
     [Header("Logging")]
     public bool LogBackfillUpdates = true;
-    public bool LogTicketUpdates = true;
     public bool LogPollingUpdates = false;
     #endregion
 
@@ -37,7 +37,7 @@ public class BackfillServerHandlerExample : MonoBehaviour
             MyTicketsAttributes
         > MatchmakingServer;
 
-    public bool BackfillStopped = false;
+    private bool BackfillRunning = false;
     private int OngoingRequests = 0;
     private BackfillAttributes BackfillAttributes;
 
@@ -78,8 +78,20 @@ public class BackfillServerHandlerExample : MonoBehaviour
                 ObservableActionType action,
                 string message
             ) =>
-            { 
-                //MTODO
+            {
+                if (action == ObservableActionType.Update)
+                {
+                    if (message == "healthy")
+                    {
+                        BackfillRunning = true;
+                    }
+                    else if (message != "healthy")
+                    {
+                        // todo handle outage/maintenance
+                        L.Error($"Matchmaking error.\n{monitor.Current}");
+                        StopBackfill();
+                    }
+                }
             },
             // handle backfill assignment
             (
@@ -105,7 +117,7 @@ public class BackfillServerHandlerExample : MonoBehaviour
     void Update()
     {
         if (
-            !BackfillStopped
+            BackfillRunning
             && MatchmakingServer.AssignedTickets.Count + OngoingRequests < TargetPlayerCount
         )
         {
@@ -137,7 +149,7 @@ public class BackfillServerHandlerExample : MonoBehaviour
 
     public void StopBackfill()
     {
-        BackfillStopped = true;
+        BackfillRunning = false;
         MatchmakingServer.RemoveAllBackfills();
     }
 }

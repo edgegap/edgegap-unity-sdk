@@ -171,7 +171,11 @@ namespace Edgegap.Matchmaking
         public void RemoveAllBackfills()
         {
             Polling = false;
-            //MTODO foreach ticket call RemoveBackfill in parallel
+
+            foreach (KeyValuePair<string, BackfillResponseDTO<A>> b in OngoingBackfills)
+            {
+                Handler.StartCoroutine(RemoveBackfillRoutine(b.Key));
+            }
         }
         #endregion
 
@@ -299,6 +303,13 @@ namespace Edgegap.Matchmaking
         {
             yield return new WaitForSeconds(PollingBackoffSeconds + (0.1f * Random.value));
             StartPollingBackfill(backfillID, consecutiveErrors);
+        }
+
+        internal IEnumerator RemoveBackfillRoutine(string backfillID)
+        {
+            L.Log($"Removing backfill {backfillID}");
+            RemoveBackfill(backfillID);
+            yield return null;
         }
         #endregion
     }
