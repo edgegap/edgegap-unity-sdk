@@ -27,6 +27,18 @@ namespace Edgegap.Matchmaking
         }
     }
 
+    public class BackfillGroupUpRequestDTO : GroupUpRequestDTO<BackfillTicketAttributesDTO>
+    {
+        public BackfillGroupUpRequestDTO(
+            Dictionary<string, float> latencyBeacons,
+            string[] backfillGroupSize
+        )
+            : base("backfill-example")
+        {
+            Attributes = new BackfillTicketAttributesDTO(latencyBeacons, backfillGroupSize);
+        }
+    }
+
     public class AdvancedGroupUpRequestDTO : GroupUpRequestDTO<AdvancedGroupUpAttributesDTO>
     {
         public AdvancedGroupUpRequestDTO(
