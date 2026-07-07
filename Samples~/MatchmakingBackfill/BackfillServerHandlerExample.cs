@@ -41,6 +41,7 @@ public class BackfillServerHandlerExample : MonoBehaviour
     private int OngoingRequests = 0;
     private BackfillAttributes BackfillAttributes;
 
+#if UNITY_SERVER
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -118,6 +119,7 @@ public class BackfillServerHandlerExample : MonoBehaviour
     {
         if (
             BackfillRunning
+            && TargetPlayerCount > 0
             && MatchmakingServer.AssignedTickets.Count + OngoingRequests < TargetPlayerCount
         )
         {
@@ -152,4 +154,5 @@ public class BackfillServerHandlerExample : MonoBehaviour
         BackfillRunning = false;
         MatchmakingServer.RemoveAllBackfills();
     }
+#endif
 }

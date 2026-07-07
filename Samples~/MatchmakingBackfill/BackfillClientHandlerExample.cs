@@ -43,6 +43,7 @@ public class BackfillClientHandlerExample : MonoBehaviour
         > MatchmakingClient;
 
     #region UI
+    [Header("UI")]
     public Text StatusDisplay;
     private string StatusDisplayDefaultPath = "/Canvas/StatusTxt";
     #endregion
