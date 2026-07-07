@@ -20,6 +20,7 @@ public class BackfillClientHandlerExample : MonoBehaviour
     [Header("Matchmaker Instance")]
     public string BaseUrl;
     public string AuthToken;
+    public string[] BackfillGroupSize = { "new", "1" };
 
     [Header("Exponential Retry")]
     public int RequestTimeoutSeconds = 3;
@@ -41,6 +42,11 @@ public class BackfillClientHandlerExample : MonoBehaviour
             MyTicketsAttributes
         > MatchmakingClient;
 
+    #region UI
+    public Text StatusDisplay;
+    private string StatusDisplayDefaultPath = "/Canvas/StatusTxt";
+    #endregion
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -50,6 +56,19 @@ public class BackfillClientHandlerExample : MonoBehaviour
         else
         {
             Instance = this;
+
+            if (StatusDisplay == null)
+            {
+                L.Log("MM ClientHandler | No Status Display provided, using default.");
+                StatusDisplay = GameObject.Find(StatusDisplayDefaultPath)?.GetComponent<Text>();
+
+                if (StatusDisplay == null)
+                {
+                    L.Warn(
+                        $"MM ClientHandler | Unable to find default component {StatusDisplayDefaultPath} in scene."
+                    );
+                }
+            }
         }
     }
 
@@ -81,7 +100,41 @@ public class BackfillClientHandlerExample : MonoBehaviour
                 string message
             ) =>
             {
-                //MTODO
+                if (action == ObservableActionType.Update)
+                {
+                    if (message == "healthy")
+                    {
+                        // todo update UI
+                        StatusDisplay.text = "Fetching beacons...";
+
+                        MatchmakingClient.Beacons(
+                            (BeaconsResponseDTO beacons) =>
+                            {
+                                Debug.Log($"beacons: {beacons}");
+
+                                MatchmakingClient.MeasureBeaconsRoundTripTime(
+                                    beacons.Beacons,
+                                    (Dictionary<string, float> pings) =>
+                                    {
+                                        StatusDisplay.text = "Starting matchmaking.";
+                                        StartMatchmaking(pings, true);
+                                    }
+                                );
+                            },
+                            (string error, UnityWebRequest request) =>
+                            {
+                                // todo handle beacon downtime, create tickets without beacons?
+                                Debug.Log($"beacon error: {request}");
+                            }
+                        );
+                    }
+                    else if (message != "healthy")
+                    {
+                        // todo handle outage/maintenance
+                        Debug.LogError($"Matchmaking error.\n{monitor.Current}");
+                        MatchmakingClient.StopMatchmaking();
+                    }
+                }
             },
             // handle group assignment
             (
@@ -89,8 +142,39 @@ public class BackfillClientHandlerExample : MonoBehaviour
                 ObservableActionType action,
                 string message
             ) =>
-            { 
-                //MTODO
+            {
+                if (
+                    action == ObservableActionType.Update
+                    && (
+                        message.Contains("created")
+                        || message.Contains("joined")
+                        || message.Contains("updated")
+                        || message.Contains("abandon")
+                    )
+                )
+                {
+                    // todo update UI
+                }
+
+                if (
+                    action == ObservableActionType.Update
+                    && message.Contains("updated")
+                    && group.Current.Status == "MATCH_FOUND"
+                )
+                {
+                    StatusDisplay.text = "Match found, awaiting assignment.";
+                }
+
+                if (
+                    action == ObservableActionType.Update
+                    && message.Contains("updated")
+                    && group.Current.Status == "HOST_ASSIGNED"
+                )
+                {
+                    // todo join game on pre-defined game port
+                    StatusDisplay.text = $"Host assigned, joining game.\n{group.Current.Assignment.Fqdn}";
+                    L.Log($"joining game: {group.Current.Assignment.Ports["gameport"].Link}");
+                }
             }
         );
     }
@@ -109,13 +193,16 @@ public class BackfillClientHandlerExample : MonoBehaviour
         StopMatchmaking();
     }
 
-    public void StartMatchmaking()
+    public void StartMatchmaking(Dictionary<string, float> pings, bool isReady)
     {
-        //MTODO
+        MatchmakingClient.CreateGroup(new MyGroupUpRequestDTO(pings, BackfillGroupSize, isReady));
     }
 
     public void StopMatchmaking()
     {
-        //MTODO
+        if (enabled)
+        {
+            MatchmakingClient.StopMatchmaking();
+        }
     }
 }

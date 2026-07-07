@@ -31,9 +31,10 @@ namespace Edgegap.Matchmaking
     {
         public BackfillGroupUpRequestDTO(
             Dictionary<string, float> latencyBeacons,
-            string[] backfillGroupSize
+            string[] backfillGroupSize,
+            bool isReady = false
         )
-            : base("backfill-example")
+            : base("backfill-example", isReady)
         {
             Attributes = new BackfillTicketAttributesDTO(latencyBeacons, backfillGroupSize);
         }
