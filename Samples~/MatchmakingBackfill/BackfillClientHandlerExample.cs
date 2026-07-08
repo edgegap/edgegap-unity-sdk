@@ -48,6 +48,7 @@ public class BackfillClientHandlerExample : MonoBehaviour
     private string StatusDisplayDefaultPath = "/Canvas/StatusTxt";
     #endregion
 
+#if !UNITY_SERVER
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -68,6 +69,10 @@ public class BackfillClientHandlerExample : MonoBehaviour
                     L.Warn(
                         $"MM ClientHandler | Unable to find default component {StatusDisplayDefaultPath} in scene."
                     );
+                }
+                else
+                {
+                    StatusDisplay.text = "";
                 }
             }
         }
@@ -125,14 +130,16 @@ public class BackfillClientHandlerExample : MonoBehaviour
                             (string error, UnityWebRequest request) =>
                             {
                                 // todo handle beacon downtime, create tickets without beacons?
-                                Debug.Log($"beacon error: {request}");
+                                StatusDisplay.text = "Beacon downtime.";
+                                L.Log($"beacon error: {request}");
                             }
                         );
                     }
                     else if (message != "healthy")
                     {
                         // todo handle outage/maintenance
-                        Debug.LogError($"Matchmaking error.\n{monitor.Current}");
+                        StatusDisplay.text = "Matchmaking error.";
+                        L.Error($"Matchmaking error.\n{monitor.Current}");
                         MatchmakingClient.StopMatchmaking();
                     }
                 }
@@ -206,4 +213,5 @@ public class BackfillClientHandlerExample : MonoBehaviour
             MatchmakingClient.StopMatchmaking();
         }
     }
+#endif
 }
