@@ -250,7 +250,7 @@ public class BackfillClientHandlerExample : MonoBehaviour
     public void Disconnect()
     {
         // todo notify server with player's ticket ID, then disconnect once processed
-        L.Log($"Player {TicketID} leaving game: {MatchmakingClient.Group.Current.Assignment.Fqdn}");
+        L.Log($"Player {TicketID} leaving game");
     }
 #endif
 }
