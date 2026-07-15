@@ -1,3 +1,4 @@
+using System;
 using Edgegap;
 using Edgegap.Matchmaking;
 using UnityEngine;
@@ -120,6 +121,14 @@ public class BackfillServerHandlerExample : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (BackfillRunning && MatchmakingServer.AssignedTickets.Count == 0)
+        {
+            StopBackfill(() =>
+            {
+                MatchmakingServer.StopServer();
+            });
+        }
+
         if (
             BackfillRunning
             && TargetPlayerCount > 0
@@ -150,10 +159,10 @@ public class BackfillServerHandlerExample : MonoBehaviour
         MatchmakingServer.AddBackfill(backfill);
     }
 
-    public void StopBackfill()
+    public void StopBackfill(Action onCompletedDelegate = null)
     {
         BackfillRunning = false;
-        MatchmakingServer.RemoveAllBackfills();
+        MatchmakingServer.RemoveAllBackfills(onCompletedDelegate);
     }
 #endif
 }

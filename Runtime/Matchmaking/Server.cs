@@ -84,6 +84,19 @@ namespace Edgegap.Matchmaking
         }
 
         #region Server API
+        public void StopServer()
+        {
+            MatchmakingApi.StopDeployment(
+                DeploymentEnvs.SelfStopURL,
+                DeploymentEnvs.SelfStopToken,
+                null,
+                (string error, UnityWebRequest request) =>
+                {
+                    L.Error($"Self Stop request failed\n{error}");
+                }
+            );
+        }
+
         public void Status()
         {
             MatchmakingApi.GetMonitor(
@@ -170,13 +183,24 @@ namespace Edgegap.Matchmaking
             );
         }
 
-        public void RemoveAllBackfills()
+        public void RemoveAllBackfills(Action onCompletedDelegate = null)
         {
             Polling = false;
 
             foreach (KeyValuePair<string, BackfillResponseDTO<A>> b in OngoingBackfills)
             {
-                Handler.StartCoroutine(RemoveBackfillRoutine(b.Key));
+                Handler.StartCoroutine(
+                    RemoveBackfillRoutine(
+                        b.Key,
+                        () =>
+                        {
+                            if (onCompletedDelegate is not null && OngoingBackfills.Count == 0)
+                            {
+                                onCompletedDelegate();
+                            }
+                        }
+                    )
+                );
             }
         }
         #endregion
@@ -307,10 +331,13 @@ namespace Edgegap.Matchmaking
             StartPollingBackfill(backfillID, consecutiveErrors);
         }
 
-        internal IEnumerator RemoveBackfillRoutine(string backfillID)
+        internal IEnumerator RemoveBackfillRoutine(
+            string backfillID,
+            Action onCompletedDelegate = null
+        )
         {
             L.Log($"Removing backfill {backfillID}");
-            RemoveBackfill(backfillID);
+            RemoveBackfill(backfillID, onCompletedDelegate);
             yield return null;
         }
         #endregion
