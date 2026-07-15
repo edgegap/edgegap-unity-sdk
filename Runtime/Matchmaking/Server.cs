@@ -79,6 +79,7 @@ namespace Edgegap.Matchmaking
 
         public void RemoveAssignedTicket(string ticketID)
         {
+            L.Log($"Removing assigned ticket {ticketID}");
             AssignedTickets.Remove(ticketID);
         }
 
@@ -153,12 +154,13 @@ namespace Edgegap.Matchmaking
                     if (request.responseCode == 404)
                     {
                         Backfills._Update(null, $"{backfillID} abandon failed (not found)");
-                        RemoveOngoingBackfill(backfillID);
                     }
                     else
                     {
                         Backfills._Error($"{backfillID} abandon failed\n{error}");
                     }
+
+                    RemoveOngoingBackfill(backfillID);
 
                     if (onCompletedDelegate is not null)
                     {

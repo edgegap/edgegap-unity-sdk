@@ -104,6 +104,7 @@ public class BackfillServerHandlerExample : MonoBehaviour
                 if (
                     (action == ObservableActionType.Error && message.Contains("create failed"))
                     || (action == ObservableActionType.Update && message.Contains("assigned"))
+                    || message.Contains("abandon")
                 )
                 {
                     --OngoingRequests;
@@ -112,6 +113,8 @@ public class BackfillServerHandlerExample : MonoBehaviour
         );
 
         BackfillAttributes = new BackfillAttributes(MatchmakingServer.DeploymentEnvs.Deployment);
+
+        // todo start listening for leaving players & their ticketID => MatchmakingServer.RemoveAssignedTicket(ticketID);
     }
 
     // Update is called once per frame
@@ -125,8 +128,6 @@ public class BackfillServerHandlerExample : MonoBehaviour
         {
             StartNewBackfill();
         }
-
-        // todo check for leaving players => MatchmakingServer.RemoveAssignedTicket(ticketID);
     }
 
     public void OnApplicationQuit()

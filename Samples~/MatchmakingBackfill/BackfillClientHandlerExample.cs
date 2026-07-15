@@ -45,8 +45,13 @@ public class BackfillClientHandlerExample : MonoBehaviour
     #region UI
     [Header("UI")]
     public Text StatusDisplay;
+    public Button DisconnectButton;
+
     private string StatusDisplayDefaultPath = "/Canvas/StatusTxt";
+    private string DisconnectBtnDefaultPath = "/Canvas/DisconnectBtn";
     #endregion
+
+    private string TicketID;
 
 #if !UNITY_SERVER
     private void Awake()
@@ -73,6 +78,24 @@ public class BackfillClientHandlerExample : MonoBehaviour
                 else
                 {
                     StatusDisplay.text = "";
+                }
+            }
+
+            if (DisconnectButton == null)
+            {
+                L.Log("MM ClientHandler | Disconnect Button provided, using default.");
+                DisconnectButton = GameObject.Find(DisconnectBtnDefaultPath)?.GetComponent<Button>();
+
+                if (DisconnectButton == null)
+                {
+                    L.Warn(
+                        $"MM ClientHandler | Unable to find default component {DisconnectBtnDefaultPath} in scene."
+                    );
+                }
+                else
+                {
+                    DisconnectButton.onClick.AddListener(Disconnect);
+                    DisconnectButton.gameObject.SetActive(false);
                 }
             }
         }
@@ -167,6 +190,15 @@ public class BackfillClientHandlerExample : MonoBehaviour
                 if (
                     action == ObservableActionType.Update
                     && message.Contains("updated")
+                    && group.Current.Status == "TEAM_FOUND"
+                )
+                {
+                    StatusDisplay.text = "Team found, awaiting match.";
+                }
+
+                if (
+                    action == ObservableActionType.Update
+                    && message.Contains("updated")
                     && group.Current.Status == "MATCH_FOUND"
                 )
                 {
@@ -181,6 +213,7 @@ public class BackfillClientHandlerExample : MonoBehaviour
                 {
                     // todo join game on pre-defined game port
                     StatusDisplay.text = $"Host assigned, joining game.\n{group.Current.Assignment.Fqdn}";
+                    TicketID = group.Current.TicketID;
                     L.Log($"joining game: {group.Current.Assignment.Ports["gameport"].Link}");
                 }
             }
@@ -212,6 +245,12 @@ public class BackfillClientHandlerExample : MonoBehaviour
         {
             MatchmakingClient.StopMatchmaking();
         }
+    }
+
+    public void Disconnect()
+    {
+        // todo notify server with player's ticket ID, then disconnect once processed
+        L.Log($"Player {TicketID} leaving game: {MatchmakingClient.Group.Current.Assignment.Fqdn}");
     }
 #endif
 }
