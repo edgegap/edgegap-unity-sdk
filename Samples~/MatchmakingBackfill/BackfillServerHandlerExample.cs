@@ -1,7 +1,10 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using Edgegap;
 using Edgegap.Matchmaking;
 using UnityEngine;
+using UnityEngine.Networking;
 using L = Edgegap.Logger;
 using MyBackfillRequestDTO = Edgegap.Matchmaking.SimpleBackfillRequestDTO;
 using MyTicketsAttributes = Edgegap.Matchmaking.BackfillTicketAttributesDTO;
@@ -39,10 +42,14 @@ public class BackfillServerHandlerExample : MonoBehaviour
         > MatchmakingServer;
 
     private bool BackfillRunning = false;
-    private int OngoingRequests = 0;
+    private int UnprocessedBackfills = 0;
     private BackfillAttributes BackfillAttributes;
+    private SafeHttpRequest Request;
 
-#if UNITY_SERVER
+    public DeploymentEnvironmentDTO DeploymentEnvs { get; private set; }
+
+    public MatchEnvironmentDTO<MyTicketsAttributes> MatchEnvs { get; private set; }
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -58,81 +65,102 @@ public class BackfillServerHandlerExample : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        MatchmakingServer = new Server<
-            MyBackfillRequestDTO,
-            MyTicketsAttributes
-        >(
-            this,
-            BaseUrl,
-            AuthToken,
-            TargetPlayerCount,
-            RequestTimeoutSeconds,
-            PollingBackoffSeconds,
-            MaxConsecutivePollingErrors,
-            LogBackfillUpdates,
-            LogPollingUpdates
-        );
+        if (!Application.isBatchMode)
+        {
+            L.Log("MM ServerHandler | Destroying self in client environment.");
+            Destroy(this.gameObject);
+        }
+        else
+        {
+            IDictionary envs = Environment.GetEnvironmentVariables();
+            DeploymentEnvs = new DeploymentEnvironmentDTO(envs);
+            MatchEnvs = new MatchEnvironmentDTO<MyTicketsAttributes>(envs);
 
-        MatchmakingServer.Initialize(
-            // handle service monitoring
-            (
-                Observable<MonitorResponseDTO> monitor,
-                ObservableActionType action,
-                string message
-            ) =>
-            {
-                if (action == ObservableActionType.Update)
+            BackfillAttributes = new BackfillAttributes(DeploymentEnvs.Deployment);
+            Request = new SafeHttpRequest(this);
+
+            MatchmakingServer = new Server<
+                MyBackfillRequestDTO,
+                MyTicketsAttributes
+            >(
+                this,
+                BaseUrl,
+                AuthToken,
+                TargetPlayerCount,
+                RequestTimeoutSeconds,
+                PollingBackoffSeconds,
+                MaxConsecutivePollingErrors,
+                LogBackfillUpdates,
+                LogPollingUpdates
+            );
+
+            MatchmakingServer.Initialize(
+                MatchEnvs.Tickets,
+                // handle service monitoring
+                (
+                    Observable<MonitorResponseDTO> monitor,
+                    ObservableActionType action,
+                    string message
+                ) =>
                 {
-                    if (message == "healthy")
+                    if (action == ObservableActionType.Update)
                     {
-                        BackfillRunning = true;
+                        if (message == "healthy")
+                        {
+                            BackfillRunning = true;
+                        }
+                        else if (message != "healthy")
+                        {
+                            // todo handle outage/maintenance
+                            L.Error($"Matchmaking error.\n{monitor.Current}");
+                            StopBackfill();
+                        }
                     }
-                    else if (message != "healthy")
+                },
+                // handle backfills
+                (
+                    Observable<Dictionary<string, BackfillResponseDTO<MyTicketsAttributes>>> backfills,
+                    ObservableActionType action,
+                    string message
+                ) =>
+                {
+                    if (
+                        action == ObservableActionType.Update
+                        && (message.Contains("assigned") || message.Contains("abandon"))
+                    )
                     {
-                        // todo handle outage/maintenance
-                        L.Error($"Matchmaking error.\n{monitor.Current}");
-                        StopBackfill();
+                        // todo handling
+                    }
+
+                    if (message.Contains("create"))
+                    {
+                        --UnprocessedBackfills;
                     }
                 }
-            },
-            // handle backfill assignment
-            (
-                Observable<BackfillResponseDTO<MyTicketsAttributes>> backfill,
-                ObservableActionType action,
-                string message
-            ) =>
-            {
-                if (
-                    (action == ObservableActionType.Error && message.Contains("create failed"))
-                    || (action == ObservableActionType.Update && message.Contains("assigned"))
-                    || message.Contains("abandon")
-                )
-                {
-                    --OngoingRequests;
-                }
-            }
-        );
+            );
 
-        BackfillAttributes = new BackfillAttributes(MatchmakingServer.DeploymentEnvs.Deployment);
-
-        // todo start listening for leaving players & their ticketID => MatchmakingServer.RemoveAssignedTicket(ticketID);
+            // todo listen for leaving players & their ticketID => MatchmakingServer.RemoveAssignment(ticketID);
+        }
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (BackfillRunning && MatchmakingServer.AssignedTickets.Count == 0)
+        if (BackfillRunning && MatchmakingServer.Assignments.Count == 0)
         {
             StopBackfill(() =>
             {
-                MatchmakingServer.StopServer();
+                StopServer();
             });
         }
 
         if (
             BackfillRunning
             && TargetPlayerCount > 0
-            && MatchmakingServer.AssignedTickets.Count + OngoingRequests < TargetPlayerCount
+            && MatchmakingServer.Assignments.Count
+                + MatchmakingServer.Backfills.Current.Count
+                + UnprocessedBackfills
+                < TargetPlayerCount
         )
         {
             StartNewBackfill();
@@ -148,12 +176,12 @@ public class BackfillServerHandlerExample : MonoBehaviour
 
     public void StartNewBackfill()
     {
-        ++OngoingRequests;
+        ++UnprocessedBackfills;
 
         MyBackfillRequestDTO backfill = new MyBackfillRequestDTO(
-            MatchmakingServer.MatchEnvs.MatchProfile,
+            MatchEnvs.MatchProfile,
             BackfillAttributes,
-            MatchmakingServer.AssignedTickets
+            MatchmakingServer.Assignments
         );
 
         MatchmakingServer.AddBackfill(backfill);
@@ -164,5 +192,21 @@ public class BackfillServerHandlerExample : MonoBehaviour
         BackfillRunning = false;
         MatchmakingServer.RemoveAllBackfills(onCompletedDelegate);
     }
-#endif
+
+    public void StopServer()
+    {
+        Request.Delete(
+            DeploymentEnvs.SelfStopURL,
+            DeploymentEnvs.SelfStopToken,
+            (string response, UnityWebRequest request) =>
+            {
+                L.Log($"MM ServerHandler | Successfully called Self-Stop API.\n{response}");
+            },
+            (string error, UnityWebRequest request) =>
+            {
+                L.Error($"MM ServerHandler | Couldn't reach Self-Stop API.\n{error}");
+            },
+            new RetryParameters { MaxAttempts = 10 }
+        );
+    }
 }

@@ -29,15 +29,6 @@ namespace Edgegap.Matchmaking
         }
 
         #region Utility
-        public void StopDeployment(
-            string url,
-            string token,
-            Action<string, UnityWebRequest> onSuccessDelegate = null,
-            Action<string, UnityWebRequest> onErrorDelegate = null
-        )
-        {
-            Request.Delete(url, token, onSuccessDelegate, onErrorDelegate);
-        }
 
         public void GetMonitor(
             Action<MonitorResponseDTO, UnityWebRequest> onSuccessDelegate,

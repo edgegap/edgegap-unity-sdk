@@ -32,17 +32,15 @@ namespace Edgegap.Matchmaking
 
         public Observable<MonitorResponseDTO> Monitor { get; private set; } =
             new Observable<MonitorResponseDTO>() { };
-        public Observable<BackfillResponseDTO<A>> Backfills { get; private set; } =
-            new Observable<BackfillResponseDTO<A>>() { };
 
-        public DeploymentEnvironmentDTO DeploymentEnvs { get; private set; }
-        public MatchEnvironmentDTO<A> MatchEnvs { get; private set; }
+        public Observable<Dictionary<string, BackfillResponseDTO<A>>> Backfills
+        {
+            get;
+            private set;
+        } = new Observable<Dictionary<string, BackfillResponseDTO<A>>>() { };
 
-        public Dictionary<string, InjectedTicketDTO<A>> AssignedTickets { get; private set; } =
-            new Dictionary<string, InjectedTicketDTO<A>>();
-
-        public Dictionary<string, BackfillResponseDTO<A>> OngoingBackfills { get; private set; } =
-            new Dictionary<string, BackfillResponseDTO<A>>();
+        public Dictionary<string, InjectedTicketDTO<A>> Assignments { get; private set; } =
+            new Dictionary<string, InjectedTicketDTO<A>>() { };
 
         private protected bool Polling = false;
 
@@ -77,25 +75,13 @@ namespace Edgegap.Matchmaking
             LogPollingUpdates = logPollingUpdates;
         }
 
-        public void RemoveAssignedTicket(string ticketID)
+        public void RemoveAssignment(string ticketID)
         {
             L.Log($"Removing assigned ticket {ticketID}");
-            AssignedTickets.Remove(ticketID);
+            Assignments.Remove(ticketID);
         }
 
         #region Server API
-        public void StopServer()
-        {
-            MatchmakingApi.StopDeployment(
-                DeploymentEnvs.SelfStopURL,
-                DeploymentEnvs.SelfStopToken,
-                null,
-                (string error, UnityWebRequest request) =>
-                {
-                    L.Error($"Self Stop request failed\n{error}");
-                }
-            );
-        }
 
         public void Status()
         {
@@ -120,7 +106,7 @@ namespace Edgegap.Matchmaking
 
         public void AddBackfill(B backfill)
         {
-            if (AssignedTickets.Count + OngoingBackfills.Count >= TargetPlayerCount)
+            if (Assignments.Count + Backfills.Current.Count >= TargetPlayerCount)
             {
                 Backfills._Error("maximum capacity currently reached");
                 return;
@@ -130,8 +116,14 @@ namespace Edgegap.Matchmaking
                 backfill,
                 (BackfillResponseDTO<A> backfillRes, UnityWebRequest request) =>
                 {
-                    OngoingBackfills[backfillRes.ID] = backfillRes;
-                    Backfills._Update(backfillRes, "created");
+                    Dictionary<string, BackfillResponseDTO<A>> temp = new Dictionary<
+                        string,
+                        BackfillResponseDTO<A>
+                    >(Backfills.Current);
+
+                    temp[backfillRes.ID] = backfillRes;
+                    Backfills._Update(temp, $"created:{backfillRes.ID}");
+
                     Polling = true;
                     Handler.StartCoroutine(DelayPollingBackfill(backfillRes.ID));
                 },
@@ -144,7 +136,7 @@ namespace Edgegap.Matchmaking
 
         public void RemoveBackfill(string backfillID, Action onCompletedDelegate = null)
         {
-            if (!OngoingBackfills.ContainsKey(backfillID))
+            if (!Backfills.Current.ContainsKey(backfillID))
             {
                 Backfills._Error($"{backfillID} not found");
                 return;
@@ -154,30 +146,32 @@ namespace Edgegap.Matchmaking
                 backfillID,
                 (UnityWebRequest request) =>
                 {
-                    Backfills._Update(null, $"{backfillID} abandoned");
-                    RemoveOngoingBackfill(backfillID);
-
-                    if (onCompletedDelegate is not null)
-                    {
-                        onCompletedDelegate();
-                    }
+                    UntrackBackfill(
+                        backfillID,
+                        $"abandoned:{backfillID}",
+                        false,
+                        onCompletedDelegate
+                    );
                 },
                 (string error, UnityWebRequest request) =>
                 {
                     if (request.responseCode == 404)
                     {
-                        Backfills._Update(null, $"{backfillID} abandon failed (not found)");
+                        UntrackBackfill(
+                            backfillID,
+                            $"{backfillID} abandon failed (not found)",
+                            false,
+                            onCompletedDelegate
+                        );
                     }
                     else
                     {
-                        Backfills._Error($"{backfillID} abandon failed\n{error}");
-                    }
-
-                    RemoveOngoingBackfill(backfillID);
-
-                    if (onCompletedDelegate is not null)
-                    {
-                        onCompletedDelegate();
+                        UntrackBackfill(
+                            backfillID,
+                            $"{backfillID} abandon failed\n{error}",
+                            true,
+                            onCompletedDelegate
+                        );
                     }
                 }
             );
@@ -186,15 +180,19 @@ namespace Edgegap.Matchmaking
         public void RemoveAllBackfills(Action onCompletedDelegate = null)
         {
             Polling = false;
+            Dictionary<string, BackfillResponseDTO<A>> temp = new Dictionary<
+                string,
+                BackfillResponseDTO<A>
+            >(Backfills.Current);
 
-            foreach (KeyValuePair<string, BackfillResponseDTO<A>> b in OngoingBackfills)
+            foreach (KeyValuePair<string, BackfillResponseDTO<A>> b in temp)
             {
                 Handler.StartCoroutine(
                     RemoveBackfillRoutine(
                         b.Key,
                         () =>
                         {
-                            if (onCompletedDelegate is not null && OngoingBackfills.Count == 0)
+                            if (onCompletedDelegate is not null && Backfills.Current.Count == 0)
                             {
                                 onCompletedDelegate();
                             }
@@ -207,13 +205,14 @@ namespace Edgegap.Matchmaking
 
         #region Initialization
         public void Initialize(
+            Dictionary<string, InjectedTicketDTO<A>> tickets,
             UnityAction<
                 Observable<MonitorResponseDTO>,
                 ObservableActionType,
                 string
             > onMonitorUpdate,
             UnityAction<
-                Observable<BackfillResponseDTO<A>>,
+                Observable<Dictionary<string, BackfillResponseDTO<A>>>,
                 ObservableActionType,
                 string
             > onBackfillUpdate
@@ -236,11 +235,11 @@ namespace Edgegap.Matchmaking
 
             L.SubscribeLogger(Backfills, "MM", "Backfill", LogBackfillUpdates);
             Backfills.Subscribe(onBackfillUpdate);
+            Backfills._Update(new Dictionary<string, BackfillResponseDTO<A>>(), "initializing");
 
-            LoadEnvs();
-            foreach (KeyValuePair<string, InjectedTicketDTO<A>> t in MatchEnvs.Tickets)
+            foreach (var t in tickets)
             {
-                AddAssignedTicket(t.Value);
+                AddAssignment(t.Value);
             }
 
             Status();
@@ -248,21 +247,38 @@ namespace Edgegap.Matchmaking
         #endregion
 
         #region Internals
-        internal void LoadEnvs()
+
+        internal void UntrackBackfill(
+            string backfillID,
+            string msg,
+            bool error,
+            Action onCompletedDelegate = null
+        )
         {
-            IDictionary envs = Environment.GetEnvironmentVariables();
-            DeploymentEnvs = new DeploymentEnvironmentDTO(envs);
-            MatchEnvs = new MatchEnvironmentDTO<A>(envs);
+            Dictionary<string, BackfillResponseDTO<A>> temp = new Dictionary<
+                string,
+                BackfillResponseDTO<A>
+            >(Backfills.Current);
+            temp.Remove(backfillID);
+
+            if (error)
+            {
+                Backfills._Error(msg, temp);
+            }
+            else
+            {
+                Backfills._Update(temp, msg);
+            }
+
+            if (onCompletedDelegate is not null)
+            {
+                onCompletedDelegate();
+            }
         }
 
-        internal void AddAssignedTicket(InjectedTicketDTO<A> ticket)
+        internal void AddAssignment(InjectedTicketDTO<A> ticket)
         {
-            AssignedTickets[ticket.ID] = ticket;
-        }
-
-        internal void RemoveOngoingBackfill(string backfillID)
-        {
-            OngoingBackfills.Remove(backfillID);
+            Assignments[ticket.ID] = ticket;
         }
 
         internal void StartPollingBackfill(string backfillID, int consecutiveErrors = 0)
@@ -285,13 +301,12 @@ namespace Edgegap.Matchmaking
 
             MatchmakingApi.GetBackfill<A>(
                 backfillID,
-                (BackfillResponseDTO<A> backfillRes, UnityWebRequest request) =>
+                (BackfillResponseDTO<A> backfill, UnityWebRequest request) =>
                 {
-                    if (backfillRes.Status == "ASSIGNED")
+                    if (backfill.Status == "ASSIGNED")
                     {
-                        AddAssignedTicket(backfillRes.AssignedTicket);
-                        RemoveOngoingBackfill(backfillID);
-                        Backfills._Update(backfillRes, $"{backfillID} assigned");
+                        AddAssignment(backfill.AssignedTicket);
+                        UntrackBackfill(backfillID, $"backfill {backfillID} assigned", false);
                     }
                     else
                     {
