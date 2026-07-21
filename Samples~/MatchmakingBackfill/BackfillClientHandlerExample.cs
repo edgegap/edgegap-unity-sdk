@@ -172,6 +172,8 @@ public class BackfillClientHandlerExample : MonoBehaviour
         if (!DeleteGroupOnQuit)
             return;
         StopMatchmaking();
+
+        // todo if connected to server => Disconnect();
     }
 
     public void StartMatchmaking(Dictionary<string, float> pings, bool isReady)
