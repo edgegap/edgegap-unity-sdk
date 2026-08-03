@@ -10,7 +10,7 @@ namespace Edgegap.Matchmaking
 {
     using L = Logger;
 
-    public class Server<B, A>
+    public class ServerAgent<B, A>
         where B : BackfillRequestDTO<A>
     {
         private Api MatchmakingApi;

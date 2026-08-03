@@ -26,12 +26,18 @@ namespace Edgegap.Matchmaking
         }
     }
 
+    public class BackfillAssignment : DeploymentDTO
+    {
+        [JsonProperty("request_id")]
+        public string RequestID;
+    }
+
     public class BackfillAttributes
     {
         [JsonProperty("assignment")]
-        public DeploymentDTO Assignment;
+        public BackfillAssignment Assignment;
 
-        public BackfillAttributes(DeploymentDTO assignment)
+        public BackfillAttributes(BackfillAssignment assignment)
         {
             Assignment = assignment;
         }

@@ -36,7 +36,7 @@ public class BackfillServerHandlerExample : MonoBehaviour
     public bool LogPollingUpdates = false;
     #endregion
 
-    public Server<
+    public ServerAgent<
             MyBackfillRequestDTO,
             MyTicketsAttributes
         > MatchmakingServer;
@@ -75,11 +75,20 @@ public class BackfillServerHandlerExample : MonoBehaviour
             IDictionary envs = Environment.GetEnvironmentVariables();
             DeploymentEnvs = new DeploymentEnvironmentDTO(envs);
             MatchEnvs = new MatchEnvironmentDTO<MyTicketsAttributes>(envs);
+            
+            BackfillAssignment deployment = new BackfillAssignment()
+            {
+                RequestID = DeploymentEnvs.RequestID,
+                Fqdn = DeploymentEnvs.Fqdn,
+                PublicIP = DeploymentEnvs.PublicIP,
+                Ports = DeploymentEnvs.PortMapping,
+                Location = DeploymentEnvs.Location,
+            };
+            BackfillAttributes = new BackfillAttributes(deployment);
 
-            BackfillAttributes = new BackfillAttributes(DeploymentEnvs.Deployment);
             Request = new SafeHttpRequest(this);
 
-            MatchmakingServer = new Server<
+            MatchmakingServer = new ServerAgent<
                 MyBackfillRequestDTO,
                 MyTicketsAttributes
             >(
