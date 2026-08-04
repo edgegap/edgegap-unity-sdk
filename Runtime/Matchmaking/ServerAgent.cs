@@ -16,7 +16,7 @@ namespace Edgegap.Matchmaking
         private Api MatchmakingApi;
 
         public MonoBehaviour Handler;
-        public int TargetPlayerCount;
+        public int TargetTeamSize;
 
         // BaseUrl may only be set with constructor
         public string BaseUrl { get; }
@@ -44,11 +44,11 @@ namespace Edgegap.Matchmaking
 
         private protected bool Polling = false;
 
-        public Server(
+        public ServerAgent(
             MonoBehaviour handler,
             string baseUrl,
             string authToken,
-            int targetPlayerCount = -1,
+            int targetTeamSize = -1,
             int requestTimeoutSeconds = 3,
             float pollingBackoffSeconds = 1f,
             int maxConsecutivePollingErrors = 10,
@@ -62,10 +62,10 @@ namespace Edgegap.Matchmaking
             }
 
             Handler = handler;
-            TargetPlayerCount = targetPlayerCount;
 
             BaseUrl = baseUrl;
             AuthToken = authToken;
+            TargetTeamSize = targetTeamSize;
 
             RequestTimeoutSeconds = requestTimeoutSeconds;
             PollingBackoffSeconds = pollingBackoffSeconds;
@@ -75,10 +75,10 @@ namespace Edgegap.Matchmaking
             LogPollingUpdates = logPollingUpdates;
         }
 
-        public void RemoveAssignment(string ticketID)
+        public bool PlayerAbandoned(string ticketID)
         {
-            L.Log($"Removing assigned ticket {ticketID}");
-            Assignments.Remove(ticketID);
+            L.Log($"MM | Backfill - removing ticket [{ticketID}]");
+            return Assignments.Remove(ticketID);
         }
 
         #region Server API
@@ -106,7 +106,7 @@ namespace Edgegap.Matchmaking
 
         public void AddBackfill(B backfill)
         {
-            if (Assignments.Count + Backfills.Current.Count >= TargetPlayerCount)
+            if (Assignments.Count + Backfills.Current.Count >= TargetTeamSize)
             {
                 Backfills._Error("maximum capacity currently reached");
                 return;
@@ -122,7 +122,7 @@ namespace Edgegap.Matchmaking
                     >(Backfills.Current);
 
                     temp[backfillRes.ID] = backfillRes;
-                    Backfills._Update(temp, $"created:{backfillRes.ID}");
+                    Backfills._Update(temp, $"created [{backfillRes.ID}]");
 
                     Polling = true;
                     Handler.StartCoroutine(DelayPollingBackfill(backfillRes.ID));
@@ -138,7 +138,10 @@ namespace Edgegap.Matchmaking
         {
             if (!Backfills.Current.ContainsKey(backfillID))
             {
-                Backfills._Error($"{backfillID} not found");
+                Backfills._Notify(
+                    $"delete failed (not found) [{backfillID}]",
+                    ObservableActionType.Warn
+                );
                 return;
             }
 
@@ -146,33 +149,76 @@ namespace Edgegap.Matchmaking
                 backfillID,
                 (UnityWebRequest request) =>
                 {
-                    UntrackBackfill(
-                        backfillID,
-                        $"abandoned:{backfillID}",
-                        false,
-                        onCompletedDelegate
+                    Handler.StartCoroutine(
+                        ExpireBackfill(
+                            backfillID,
+                            (
+                                bool backfillExpired,
+                                Dictionary<string, BackfillResponseDTO<A>> updatedBackfills
+                            ) =>
+                            {
+                                if (backfillExpired)
+                                {
+                                    Backfills._Update(
+                                        updatedBackfills,
+                                        $"abandoned [{backfillID}]"
+                                    );
+                                }
+                                else
+                                {
+                                    Backfills._Notify(
+                                        $"expiration failed [{backfillID}]",
+                                        ObservableActionType.Warn
+                                    );
+                                }
+
+                                if (onCompletedDelegate is not null)
+                                {
+                                    onCompletedDelegate();
+                                }
+                            }
+                        )
                     );
                 },
                 (string error, UnityWebRequest request) =>
                 {
-                    if (request.responseCode == 404)
-                    {
-                        UntrackBackfill(
+                    Handler.StartCoroutine(
+                        ExpireBackfill(
                             backfillID,
-                            $"{backfillID} abandon failed (not found)",
-                            false,
-                            onCompletedDelegate
-                        );
-                    }
-                    else
-                    {
-                        UntrackBackfill(
-                            backfillID,
-                            $"{backfillID} abandon failed\n{error}",
-                            true,
-                            onCompletedDelegate
-                        );
-                    }
+                            (
+                                bool backfillExpired,
+                                Dictionary<string, BackfillResponseDTO<A>> updatedBackfills
+                            ) =>
+                            {
+                                if (backfillExpired)
+                                {
+                                    string msg;
+                                    if (request.responseCode == 404)
+                                    {
+                                        msg = $"abandon failed (not found) [{backfillID}]";
+                                    }
+                                    else
+                                    {
+                                        msg = $"abandon failed [{backfillID}]\n{error}";
+                                    }
+
+                                    Backfills._Error(msg, updatedBackfills);
+                                }
+                                else
+                                {
+                                    Backfills._Notify(
+                                        $"expiration failed [{backfillID}]",
+                                        ObservableActionType.Warn
+                                    );
+                                }
+
+                                if (onCompletedDelegate is not null)
+                                {
+                                    onCompletedDelegate();
+                                }
+                            }
+                        )
+                    );
                 }
             );
         }
@@ -248,32 +294,20 @@ namespace Edgegap.Matchmaking
 
         #region Internals
 
-        internal void UntrackBackfill(
+        internal IEnumerator ExpireBackfill(
             string backfillID,
-            string msg,
-            bool error,
-            Action onCompletedDelegate = null
+            Action<bool, Dictionary<string, BackfillResponseDTO<A>>> onCompletedDelegate,
+            float delaySeconds = 0f
         )
         {
+            yield return new WaitForSeconds(delaySeconds);
+
             Dictionary<string, BackfillResponseDTO<A>> temp = new Dictionary<
                 string,
                 BackfillResponseDTO<A>
             >(Backfills.Current);
-            temp.Remove(backfillID);
 
-            if (error)
-            {
-                Backfills._Error(msg, temp);
-            }
-            else
-            {
-                Backfills._Update(temp, msg);
-            }
-
-            if (onCompletedDelegate is not null)
-            {
-                onCompletedDelegate();
-            }
+            onCompletedDelegate(temp.Remove(backfillID), temp);
         }
 
         internal void AddAssignment(InjectedTicketDTO<A> ticket)
@@ -306,7 +340,32 @@ namespace Edgegap.Matchmaking
                     if (backfill.Status == "ASSIGNED")
                     {
                         AddAssignment(backfill.AssignedTicket);
-                        UntrackBackfill(backfillID, $"backfill {backfillID} assigned", false);
+
+                        Handler.StartCoroutine(
+                            ExpireBackfill(
+                                backfillID,
+                                (
+                                    bool backfillExpired,
+                                    Dictionary<string, BackfillResponseDTO<A>> updatedBackfills
+                                ) =>
+                                {
+                                    if (backfillExpired)
+                                    {
+                                        Backfills._Update(
+                                            updatedBackfills,
+                                            $"assigned [{backfillID}]"
+                                        );
+                                    }
+                                    else
+                                    {
+                                        Backfills._Notify(
+                                            $"expiration failed [{backfillID}]",
+                                            ObservableActionType.Warn
+                                        );
+                                    }
+                                }
+                            )
+                        );
                     }
                     else
                     {
