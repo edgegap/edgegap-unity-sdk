@@ -157,25 +157,19 @@ namespace Edgegap.Matchmaking
                                 Dictionary<string, BackfillResponseDTO<A>> updatedBackfills
                             ) =>
                             {
-                                if (backfillExpired)
-                                {
-                                    Backfills._Update(
-                                        updatedBackfills,
-                                        $"abandoned [{backfillID}]"
-                                    );
-                                }
-                                else
-                                {
-                                    Backfills._Notify(
-                                        $"expiration failed [{backfillID}]",
-                                        ObservableActionType.Warn
-                                    );
-                                }
-
-                                if (onCompletedDelegate is not null)
-                                {
-                                    onCompletedDelegate();
-                                }
+                                OnBackfillExpired(
+                                    backfillID,
+                                    backfillExpired,
+                                    updatedBackfills,
+                                    () =>
+                                    {
+                                        Backfills._Update(
+                                            updatedBackfills,
+                                            $"abandoned [{backfillID}]"
+                                        );
+                                    },
+                                    onCompletedDelegate
+                                );
                             }
                         )
                     );
@@ -190,32 +184,26 @@ namespace Edgegap.Matchmaking
                                 Dictionary<string, BackfillResponseDTO<A>> updatedBackfills
                             ) =>
                             {
-                                if (backfillExpired)
-                                {
-                                    string msg;
-                                    if (request.responseCode == 404)
+                                OnBackfillExpired(
+                                    backfillID,
+                                    backfillExpired,
+                                    updatedBackfills,
+                                    () =>
                                     {
-                                        msg = $"abandon failed (not found) [{backfillID}]";
-                                    }
-                                    else
-                                    {
-                                        msg = $"abandon failed [{backfillID}]\n{error}";
-                                    }
+                                        string msg;
+                                        if (request.responseCode == 404)
+                                        {
+                                            msg = $"abandon failed (not found) [{backfillID}]";
+                                        }
+                                        else
+                                        {
+                                            msg = $"abandon failed [{backfillID}]\n{error}";
+                                        }
 
-                                    Backfills._Error(msg, updatedBackfills);
-                                }
-                                else
-                                {
-                                    Backfills._Notify(
-                                        $"expiration failed [{backfillID}]",
-                                        ObservableActionType.Warn
-                                    );
-                                }
-
-                                if (onCompletedDelegate is not null)
-                                {
-                                    onCompletedDelegate();
-                                }
+                                        Backfills._Error(msg, updatedBackfills);
+                                    },
+                                    onCompletedDelegate
+                                );
                             }
                         )
                     );
@@ -310,6 +298,29 @@ namespace Edgegap.Matchmaking
             onCompletedDelegate(temp.Remove(backfillID), temp);
         }
 
+        internal void OnBackfillExpired(
+            string backfillID,
+            bool backfillExpired,
+            Dictionary<string, BackfillResponseDTO<A>> updatedBackfills,
+            Action onExpiredSuccess,
+            Action onCompletedDelegate = null
+        )
+        {
+            if (backfillExpired)
+            {
+                onExpiredSuccess();
+            }
+            else
+            {
+                Backfills._Notify($"expiration failed [{backfillID}]", ObservableActionType.Warn);
+            }
+
+            if (onCompletedDelegate is not null)
+            {
+                onCompletedDelegate();
+            }
+        }
+
         internal void AddAssignment(InjectedTicketDTO<A> ticket)
         {
             Assignments[ticket.ID] = ticket;
@@ -349,20 +360,18 @@ namespace Edgegap.Matchmaking
                                     Dictionary<string, BackfillResponseDTO<A>> updatedBackfills
                                 ) =>
                                 {
-                                    if (backfillExpired)
-                                    {
-                                        Backfills._Update(
-                                            updatedBackfills,
-                                            $"assigned [{backfillID}]"
-                                        );
-                                    }
-                                    else
-                                    {
-                                        Backfills._Notify(
-                                            $"expiration failed [{backfillID}]",
-                                            ObservableActionType.Warn
-                                        );
-                                    }
+                                    OnBackfillExpired(
+                                        backfillID,
+                                        backfillExpired,
+                                        updatedBackfills,
+                                        () =>
+                                        {
+                                            Backfills._Update(
+                                                updatedBackfills,
+                                                $"assigned [{backfillID}]"
+                                            );
+                                        }
+                                    );
                                 }
                             )
                         );
