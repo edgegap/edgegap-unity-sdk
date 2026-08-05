@@ -69,6 +69,7 @@ namespace Edgegap
             string subject,
             bool enabled = true
         )
+            where O : new()
         {
             observable.Subscribe(
                 (Observable<O> obs, ObservableActionType type, string message) =>

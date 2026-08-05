@@ -12,7 +12,7 @@ namespace Edgegap.Matchmaking
     using L = Logger;
 
     public class Client<T, A>
-        where T : TicketsRequestDTO<A>
+        where T : TicketsRequestDTO<A>, new()
     {
         private Api MatchmakingApi;
         private Edgegap.Ping Ping;

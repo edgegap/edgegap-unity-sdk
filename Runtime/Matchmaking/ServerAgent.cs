@@ -190,17 +190,20 @@ namespace Edgegap.Matchmaking
                                     updatedBackfills,
                                     () =>
                                     {
-                                        string msg;
                                         if (request.responseCode == 404)
                                         {
-                                            msg = $"abandon failed (not found) [{backfillID}]";
+                                            Backfills._Notify(
+                                                $"abandon failed (not found) [{backfillID}]",
+                                                ObservableActionType.Warn
+                                            );
                                         }
                                         else
                                         {
-                                            msg = $"abandon failed [{backfillID}]\n{error}";
+                                            Backfills._Error(
+                                                $"abandon failed [{backfillID}]\n{error}",
+                                                updatedBackfills
+                                            );
                                         }
-
-                                        Backfills._Error(msg, updatedBackfills);
                                     },
                                     onCompletedDelegate
                                 );
@@ -222,14 +225,32 @@ namespace Edgegap.Matchmaking
             foreach (KeyValuePair<string, BackfillResponseDTO<A>> b in temp)
             {
                 Handler.StartCoroutine(
-                    RemoveBackfillRoutine(
+                    ExpireBackfill(
                         b.Key,
-                        () =>
+                        (
+                            bool backfillExpired,
+                            Dictionary<string, BackfillResponseDTO<A>> updatedBackfills
+                        ) =>
                         {
-                            if (onCompletedDelegate is not null && Backfills.Current.Count == 0)
-                            {
-                                onCompletedDelegate();
-                            }
+                            OnBackfillExpired(
+                                b.Key,
+                                backfillExpired,
+                                updatedBackfills,
+                                () =>
+                                {
+                                    Backfills._Update(updatedBackfills, $"abandoned [{b.Key}]");
+                                },
+                                () =>
+                                {
+                                    if (
+                                        onCompletedDelegate is not null
+                                        && Backfills.Current.Count == 0
+                                    )
+                                    {
+                                        onCompletedDelegate();
+                                    }
+                                }
+                            );
                         }
                     )
                 );
@@ -269,11 +290,10 @@ namespace Edgegap.Matchmaking
 
             L.SubscribeLogger(Backfills, "MM", "Backfill", LogBackfillUpdates);
             Backfills.Subscribe(onBackfillUpdate);
-            Backfills._Update(new Dictionary<string, BackfillResponseDTO<A>>(), "initializing");
 
-            foreach (var t in tickets)
+            foreach (InjectedTicketDTO<A> t in tickets.Values)
             {
-                AddAssignment(t.Value);
+                AddAssignment(t);
             }
 
             Status();
@@ -386,7 +406,7 @@ namespace Edgegap.Matchmaking
                     if (consecutiveErrors + 1 > MaxConsecutivePollingErrors)
                     {
                         Backfills._Error(
-                            $"polling {backfillID} failed, reached maximum retries\n{error}"
+                            $"polling failed (reached maximum retries) [{backfillID}]\n{error}"
                         );
                         RemoveBackfill(backfillID);
                     }
@@ -398,9 +418,40 @@ namespace Edgegap.Matchmaking
                                 DelayPollingBackfill(backfillID, consecutiveErrors + 1)
                             );
                         }
+                        else if (request.responseCode == 404)
+                        {
+                            Backfills._Notify(
+                                $"polling failed (not found) [{backfillID}]",
+                                ObservableActionType.Warn
+                            );
+
+                            Handler.StartCoroutine(
+                                ExpireBackfill(
+                                    backfillID,
+                                    (
+                                        bool backfillExpired,
+                                        Dictionary<string, BackfillResponseDTO<A>> updatedBackfills
+                                    ) =>
+                                    {
+                                        OnBackfillExpired(
+                                            backfillID,
+                                            backfillExpired,
+                                            updatedBackfills,
+                                            () =>
+                                            {
+                                                Backfills._Update(
+                                                    updatedBackfills,
+                                                    $"abandoned [{backfillID}]"
+                                                );
+                                            }
+                                        );
+                                    }
+                                )
+                            );
+                        }
                         else
                         {
-                            Backfills._Error($"polling {backfillID} failed\n{error}");
+                            Backfills._Error($"polling failed [{backfillID}]\n{error}");
                             RemoveBackfill(backfillID);
                         }
                     }
@@ -412,16 +463,6 @@ namespace Edgegap.Matchmaking
         {
             yield return new WaitForSeconds(PollingBackoffSeconds + (0.1f * Random.value));
             StartPollingBackfill(backfillID, consecutiveErrors);
-        }
-
-        internal IEnumerator RemoveBackfillRoutine(
-            string backfillID,
-            Action onCompletedDelegate = null
-        )
-        {
-            L.Log($"Removing backfill {backfillID}");
-            RemoveBackfill(backfillID, onCompletedDelegate);
-            yield return null;
         }
         #endregion
     }

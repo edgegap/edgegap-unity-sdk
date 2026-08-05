@@ -44,7 +44,7 @@ public class BackfillClientHandlerExample : MonoBehaviour
 
     private string TicketID;
 
-    private void Awake()
+    public void Awake()
     {
         if (Instance != null && Instance != this)
         {
@@ -56,7 +56,6 @@ public class BackfillClientHandlerExample : MonoBehaviour
         }
     }
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
         if (Application.isBatchMode)
@@ -66,7 +65,6 @@ public class BackfillClientHandlerExample : MonoBehaviour
         }
         else
         {
-            // configure Matchmaking
             MatchmakingClient = new GroupClient<
                 MyGroupUpRequestDTO,
                 MyTicketsAttributes
@@ -82,9 +80,7 @@ public class BackfillClientHandlerExample : MonoBehaviour
                 LogPollingUpdates
             );
 
-            // initialize Matchmaking
             MatchmakingClient.Initialize(
-                // handle service monitoring
                 (
                     Observable<MonitorResponseDTO> monitor,
                     ObservableActionType action,
@@ -125,7 +121,6 @@ public class BackfillClientHandlerExample : MonoBehaviour
                         }
                     }
                 },
-                // handle group assignment
                 (
                     Observable<GroupUpResponseDTO> group,
                     ObservableActionType action,
@@ -172,8 +167,6 @@ public class BackfillClientHandlerExample : MonoBehaviour
         if (!DeleteGroupOnQuit)
             return;
         StopMatchmaking();
-
-        // todo if connected to server => Disconnect();
     }
 
     public void StartMatchmaking(Dictionary<string, float> pings, bool isReady)
@@ -187,11 +180,5 @@ public class BackfillClientHandlerExample : MonoBehaviour
         {
             MatchmakingClient.StopMatchmaking();
         }
-    }
-
-    public void Disconnect()
-    {
-        // todo notify server with player's ticket ID, then disconnect player once processed
-        L.Log($"Player {TicketID} leaving game");
     }
 }
