@@ -65,6 +65,11 @@ namespace Edgegap.ServerBrowser
             int heartbeatMaxConsecutiveErrors = 10
         )
         {
+            if (handler == null)
+            {
+                throw new Exception("ServerAgent Handler not assigned.");
+            }
+
             Handler = handler;
 
             BaseUrl = baseUrl;
