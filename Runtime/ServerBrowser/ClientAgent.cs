@@ -41,7 +41,13 @@ namespace Edgegap.ServerBrowser
             int requestTimeoutSeconds = 3
         )
         {
+            if (handler == null)
+            {
+                throw new Exception("ServerAgent Handler not assigned.");
+            }
+
             Handler = handler;
+
             BaseUrl = baseUrl;
             AuthToken = authToken;
 
