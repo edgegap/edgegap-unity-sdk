@@ -63,6 +63,12 @@ namespace Edgegap.ServerBrowser
         [JsonProperty("pagination")]
         public PaginationDTO Pagination;
 
+        public InstanceListResponseDTO()
+        {
+            ServerInstances = new List<InstanceDTO<InstanceMetadata, SlotMetadata>>();
+            Pagination = new PaginationDTO() { PageSize = 0, Count = 0 };
+        }
+
         public override string ToString()
         {
             return JsonConvert.SerializeObject(this);

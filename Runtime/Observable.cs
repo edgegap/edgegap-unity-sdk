@@ -4,6 +4,7 @@ using UnityEngine.Events;
 namespace Edgegap
 {
     public class Observable<T>
+        where T : new()
     {
         public T Current { get; private set; }
         public T Previous { get; private set; }
@@ -12,7 +13,10 @@ namespace Edgegap
         private UnityEvent<Observable<T>, ObservableActionType, string> UpdateEvent =
             new UnityEvent<Observable<T>, ObservableActionType, string>();
 
-        public Observable() { }
+        public Observable()
+        {
+            Current = new T();
+        }
 
         ~Observable()
         {
