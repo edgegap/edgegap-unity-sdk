@@ -327,6 +327,10 @@ namespace Edgegap.ServerBrowser
                 {
                     FlushSlotUpdates();
                 }
+                else if (!PendingInstanceUpdates.IsEmpty)
+                {
+                    FlushInstanceUpdates();
+                }
                 return;
             }
 
