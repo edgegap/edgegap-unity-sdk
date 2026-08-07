@@ -458,12 +458,33 @@ namespace Edgegap.ServerBrowser
             if (!FlushingUpdates)
             {
                 FlushingUpdates = true;
-            }
 
-            if (PendingInstanceUpdates.IsEmpty)
-            {
-                FlushingUpdates = false;
-                return;
+                if (PendingSlotUpdates.IsEmpty)
+                {
+                    Api.GetServerInstance(
+                        Instance.Current.RequestID,
+                        (
+                            InstanceDTO<ServerInstanceMetadata, SlotMetadata> instance,
+                            UnityWebRequest request
+                        ) =>
+                        {
+                            Instance._Update(instance, "instance updated");
+                            FlushingUpdates = false;
+                        },
+                        (string error, UnityWebRequest request) =>
+                        {
+                            Instance._Error(
+                                $"instance update failed, enqueuing for retry\n{error}"
+                            );
+                            if (PendingInstanceUpdates.IsEmpty)
+                            {
+                                PendingInstanceUpdates.Enqueue(Instance.Current.Metadata);
+                            }
+                            FlushingUpdates = false;
+                        }
+                    );
+                    return;
+                }
             }
 
             ServerInstanceMetadata mergedUpdate = Instance.Current.Metadata;
