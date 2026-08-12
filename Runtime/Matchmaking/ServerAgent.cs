@@ -11,11 +11,13 @@ namespace Edgegap.Matchmaking
     using L = Logger;
 
     public class ServerAgent<B, A>
-        where B : BackfillRequestDTO<A>
+        where B : BackfillRequestDTO<A>, new()
     {
         private Api MatchmakingApi;
 
         public MonoBehaviour Handler;
+        public string Profile;
+        public BackfillAttributes BackfillAttributes;
         public int TargetTeamSize;
 
         // BaseUrl may only be set with constructor
@@ -24,8 +26,8 @@ namespace Edgegap.Matchmaking
 
         public int RequestTimeoutSeconds;
         public float PollingBackoffSeconds;
-        public int MaxConsecutivePollingErrors;
-        public float RemoveBackfillSeconds;
+        public float ExpirationPeriodSeconds;
+        public float ConnectionGracePeriodSeconds;
 
         public bool LogBackfillUpdates;
         public bool LogPollingUpdates;
@@ -39,8 +41,8 @@ namespace Edgegap.Matchmaking
             private set;
         } = new Observable<Dictionary<string, BackfillResponseDTO<A>>>() { };
 
-        public Dictionary<string, InjectedTicketDTO<A>> Assignments { get; private set; } =
-            new Dictionary<string, InjectedTicketDTO<A>>() { };
+        public Dictionary<string, BackfillAssignedTicket<A>> Assignments { get; private set; } =
+            new Dictionary<string, BackfillAssignedTicket<A>>() { };
 
         private protected bool Polling = false;
 
@@ -48,10 +50,13 @@ namespace Edgegap.Matchmaking
             MonoBehaviour handler,
             string baseUrl,
             string authToken,
+            string profile,
+            BackfillAttributes attributes,
             int targetTeamSize = -1,
             int requestTimeoutSeconds = 3,
             float pollingBackoffSeconds = 1f,
-            int maxConsecutivePollingErrors = 10,
+            float expirationPeriodSeconds = 30f,
+            float connectionGracePeriodSeconds = 60f,
             bool logBackfillUpdates = true,
             bool logPollingUpdates = false
         )
@@ -65,20 +70,47 @@ namespace Edgegap.Matchmaking
 
             BaseUrl = baseUrl;
             AuthToken = authToken;
+            Profile = profile;
+            BackfillAttributes = attributes;
             TargetTeamSize = targetTeamSize;
 
             RequestTimeoutSeconds = requestTimeoutSeconds;
             PollingBackoffSeconds = pollingBackoffSeconds;
-            MaxConsecutivePollingErrors = maxConsecutivePollingErrors;
+            ExpirationPeriodSeconds = expirationPeriodSeconds;
+            ConnectionGracePeriodSeconds = connectionGracePeriodSeconds;
 
             LogBackfillUpdates = logBackfillUpdates;
             LogPollingUpdates = logPollingUpdates;
         }
 
-        public bool PlayerAbandoned(string ticketID)
+        public void AbandonPlayer(string ticketID)
         {
-            L.Log($"MM | Backfill - removing ticket [{ticketID}]");
-            return Assignments.Remove(ticketID);
+            if (Assignments.Remove(ticketID))
+            {
+                L.Log($"MM | Backfill - ticket removed [{ticketID}]");
+                StartNewBackfill();
+            }
+            else
+            {
+                L.Warn($"MM | Backfill - ticket abandon failed [{ticketID}]");
+            }
+        }
+
+        public BackfillAssignedTicket<A> PlayerConnected(string ticketID)
+        {
+            if (Assignments.ContainsKey(ticketID))
+            {
+                if (Assignments[ticketID].JoinedAt is null)
+                {
+                    Assignments[ticketID].JoinedAt = DateTime.Now;
+                }
+
+                return Assignments[ticketID];
+            }
+            else
+            {
+                return null;
+            }
         }
 
         #region Server API
@@ -116,6 +148,8 @@ namespace Edgegap.Matchmaking
                 backfill,
                 (BackfillResponseDTO<A> backfillRes, UnityWebRequest request) =>
                 {
+                    backfillRes.CreatedAt = DateTime.Now;
+
                     Dictionary<string, BackfillResponseDTO<A>> temp = new Dictionary<
                         string,
                         BackfillResponseDTO<A>
@@ -124,14 +158,27 @@ namespace Edgegap.Matchmaking
                     temp[backfillRes.ID] = backfillRes;
                     Backfills._Update(temp, $"created [{backfillRes.ID}]");
 
-                    Polling = true;
-                    Handler.StartCoroutine(DelayPollingBackfill(backfillRes.ID));
+                    if (!Polling && Backfills.Current.Count == 1)
+                    {
+                        Polling = true;
+                        Handler.StartCoroutine(DelayMethod(StartPollingBackfills));
+                    }
                 },
                 (string error, UnityWebRequest request) =>
                 {
                     Backfills._Error($"backfill create failed\n{error}");
                 }
             );
+        }
+
+        public void AddBackfills()
+        {
+            int nbBackfills = Assignments.Count + Backfills.Current.Count - TargetTeamSize;
+
+            for (int i = 0; i < nbBackfills; ++i)
+            {
+                StartNewBackfill();
+            }
         }
 
         public void RemoveBackfill(string backfillID, Action onCompletedDelegate = null)
@@ -293,7 +340,7 @@ namespace Edgegap.Matchmaking
 
             foreach (InjectedTicketDTO<A> t in tickets.Values)
             {
-                AddAssignment(t);
+                AddAssignment((BackfillAssignedTicket<A>)t);
             }
 
             Status();
@@ -341,107 +388,63 @@ namespace Edgegap.Matchmaking
             }
         }
 
-        internal void AddAssignment(InjectedTicketDTO<A> ticket)
+        internal void AddAssignment(BackfillAssignedTicket<A> ticket)
         {
+            ticket.AssignedAt = DateTime.Now;
             Assignments[ticket.ID] = ticket;
+            Handler.StartCoroutine(DelayMethod(() => CheckTicketConnection(ticket.ID)));
         }
 
-        internal void StartPollingBackfill(string backfillID, int consecutiveErrors = 0)
+        internal void StartNewBackfill()
+        {
+            B newBackfill = new B()
+            {
+                Profile = Profile,
+                Attributes = BackfillAttributes,
+                Tickets = Assignments,
+            };
+
+            AddBackfill(newBackfill);
+        }
+
+        internal void StartPollingBackfills()
         {
             if (!Polling)
             {
                 if (LogPollingUpdates)
                 {
-                    Backfills._Notify($"polling {backfillID} stopped");
+                    Backfills._Notify($"polling stopped");
                 }
                 return;
             }
 
-            if (LogPollingUpdates)
+            foreach (BackfillResponseDTO<A> b in Backfills.Current.Values)
             {
-                Backfills._Notify(
-                    $"polling {backfillID} [{consecutiveErrors + 1}/{MaxConsecutivePollingErrors}]"
-                );
-            }
-
-            MatchmakingApi.GetBackfill<A>(
-                backfillID,
-                (BackfillResponseDTO<A> backfill, UnityWebRequest request) =>
-                {
-                    if (backfill.Status == "ASSIGNED")
+                MatchmakingApi.GetBackfill<A>(
+                    b.ID,
+                    (BackfillResponseDTO<A> backfill, UnityWebRequest request) =>
                     {
-                        AddAssignment(backfill.AssignedTicket);
-
-                        Handler.StartCoroutine(
-                            ExpireBackfill(
-                                backfillID,
-                                (
-                                    bool backfillExpired,
-                                    Dictionary<string, BackfillResponseDTO<A>> updatedBackfills
-                                ) =>
-                                {
-                                    OnBackfillExpired(
-                                        backfillID,
-                                        backfillExpired,
-                                        updatedBackfills,
-                                        () =>
-                                        {
-                                            Backfills._Update(
-                                                updatedBackfills,
-                                                $"assigned [{backfillID}]"
-                                            );
-                                        }
-                                    );
-                                }
-                            )
-                        );
-                    }
-                    else
-                    {
-                        Handler.StartCoroutine(DelayPollingBackfill(backfillID));
-                    }
-                },
-                (string error, UnityWebRequest request) =>
-                {
-                    if (consecutiveErrors + 1 > MaxConsecutivePollingErrors)
-                    {
-                        Backfills._Error(
-                            $"polling failed (reached maximum retries) [{backfillID}]\n{error}"
-                        );
-                        RemoveBackfill(backfillID);
-                    }
-                    else
-                    {
-                        if (request.responseCode == 429 || request.responseCode >= 500)
+                        if (backfill.Status == "ASSIGNED")
                         {
-                            Handler.StartCoroutine(
-                                DelayPollingBackfill(backfillID, consecutiveErrors + 1)
-                            );
-                        }
-                        else if (request.responseCode == 404)
-                        {
-                            Backfills._Notify(
-                                $"polling failed (not found) [{backfillID}]",
-                                ObservableActionType.Warn
-                            );
+                            AddAssignment((BackfillAssignedTicket<A>)backfill.AssignedTicket);
 
                             Handler.StartCoroutine(
                                 ExpireBackfill(
-                                    backfillID,
+                                    b.ID,
                                     (
                                         bool backfillExpired,
                                         Dictionary<string, BackfillResponseDTO<A>> updatedBackfills
                                     ) =>
                                     {
                                         OnBackfillExpired(
-                                            backfillID,
+                                            b.ID,
                                             backfillExpired,
                                             updatedBackfills,
                                             () =>
                                             {
                                                 Backfills._Update(
                                                     updatedBackfills,
-                                                    $"abandoned [{backfillID}]"
+                                                    $"assigned [{b.ID}]"
                                                 );
                                             }
                                         );
@@ -449,20 +452,84 @@ namespace Edgegap.Matchmaking
                                 )
                             );
                         }
-                        else
+                    },
+                    (string error, UnityWebRequest request) =>
+                    {
+                        if ((DateTime.Now - b.CreatedAt)?.TotalSeconds >= ExpirationPeriodSeconds)
                         {
-                            Backfills._Error($"polling failed [{backfillID}]\n{error}");
-                            RemoveBackfill(backfillID);
+                            Backfills._Notify(
+                                $"backfill expiration period exceeded [{b.ID}]",
+                                ObservableActionType.Warn
+                            );
+                            RemoveBackfill(b.ID, StartNewBackfill);
+                        }
+                        else if (request.responseCode == 404)
+                        {
+                            Backfills._Notify(
+                                $"polling failed (not found) [{b.ID}]",
+                                ObservableActionType.Warn
+                            );
+
+                            Handler.StartCoroutine(
+                                ExpireBackfill(
+                                    b.ID,
+                                    (
+                                        bool backfillExpired,
+                                        Dictionary<string, BackfillResponseDTO<A>> updatedBackfills
+                                    ) =>
+                                    {
+                                        OnBackfillExpired(
+                                            b.ID,
+                                            backfillExpired,
+                                            updatedBackfills,
+                                            () =>
+                                            {
+                                                Backfills._Update(
+                                                    updatedBackfills,
+                                                    $"abandoned [{b.ID}]"
+                                                );
+                                            },
+                                            StartNewBackfill
+                                        );
+                                    }
+                                )
+                            );
+                        }
+                        else if (request.responseCode != 429 && request.responseCode < 500)
+                        {
+                            Backfills._Error($"polling failed [{b.ID}]\n{error}");
                         }
                     }
-                }
-            );
+                );
+            }
+
+            Handler.StartCoroutine(DelayMethod(StartPollingBackfills));
         }
 
-        internal IEnumerator DelayPollingBackfill(string backfillID, int consecutiveErrors = 0)
+        internal void CheckTicketConnection(string ticketID)
+        {
+            double? timeSinceAssigned = (
+                DateTime.Now - Assignments[ticketID].AssignedAt
+            )?.TotalSeconds;
+
+            if (
+                Assignments[ticketID].JoinedAt is null
+                && timeSinceAssigned >= ConnectionGracePeriodSeconds
+            )
+            {
+                L.Log($"MM | Backfill - connection grace period expired [{ticketID}]");
+                AbandonPlayer(ticketID);
+            }
+            else
+            {
+                Handler.StartCoroutine(DelayMethod(() => CheckTicketConnection(ticketID)));
+            }
+        }
+
+        internal IEnumerator DelayMethod(Action onDelayFinished)
         {
             yield return new WaitForSeconds(PollingBackoffSeconds + (0.1f * Random.value));
-            StartPollingBackfill(backfillID, consecutiveErrors);
+            onDelayFinished();
         }
         #endregion
     }

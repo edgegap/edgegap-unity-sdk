@@ -146,7 +146,7 @@ public class BackfillClientHandlerExample : MonoBehaviour
                         && group.Current.Status == "HOST_ASSIGNED"
                     )
                     {
-                        // todo join game on pre-defined game port
+                        // todo join game on pre-defined game port & send ticketID to server during connection
                         TicketID = group.Current.TicketID;
                         L.Log($"joining game: {group.Current.Assignment.Ports["gameport"].Link}");
                     }

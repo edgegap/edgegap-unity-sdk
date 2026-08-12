@@ -12,7 +12,7 @@ namespace Edgegap.Matchmaking
         public BackfillAttributes Attributes;
 
         [JsonProperty("tickets")]
-        public Dictionary<string, InjectedTicketDTO<A>> Tickets;
+        public Dictionary<string, BackfillAssignedTicket<A>> Tickets;
 
         public BackfillRequestDTO(string profile, BackfillAttributes attributes)
         {
@@ -50,10 +50,13 @@ namespace Edgegap.Matchmaking
 
     public class SimpleBackfillRequestDTO : BackfillRequestDTO<BackfillTicketAttributesDTO>
     {
+        public SimpleBackfillRequestDTO()
+            : base("", null) { }
+
         public SimpleBackfillRequestDTO(
             string profile,
             BackfillAttributes attributes,
-            Dictionary<string, InjectedTicketDTO<BackfillTicketAttributesDTO>> tickets
+            Dictionary<string, BackfillAssignedTicket<BackfillTicketAttributesDTO>> tickets
         )
             : base(profile, attributes)
         {

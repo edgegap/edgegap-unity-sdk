@@ -31,4 +31,15 @@ namespace Edgegap.Matchmaking
             return JsonConvert.SerializeObject(this);
         }
     }
+
+    public class BackfillAssignedTicket<A> : InjectedTicketDTO<A>
+    {
+#nullable enable
+        [JsonIgnore]
+        public DateTime? AssignedAt;
+
+        [JsonIgnore]
+        public DateTime? JoinedAt;
+#nullable disable
+    }
 }

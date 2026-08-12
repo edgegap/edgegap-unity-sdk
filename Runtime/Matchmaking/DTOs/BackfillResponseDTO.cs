@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
@@ -20,6 +21,9 @@ namespace Edgegap.Matchmaking
 #nullable enable
         [JsonProperty("assigned_ticket")]
         public InjectedTicketDTO<A>? AssignedTicket;
+
+        [JsonIgnore]
+        public DateTime? CreatedAt;
 
 #nullable disable
 

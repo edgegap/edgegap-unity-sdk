@@ -26,7 +26,11 @@ public class BackfillServerHandlerExample : MonoBehaviour
     [Header("Exponential Retry")]
     public int RequestTimeoutSeconds = 3;
     public float PollingBackoffSeconds = 1f;
-    public int MaxConsecutivePollingErrors = 10;
+
+    [Header("Expiration and Grace Period")]
+    public float ExpirationPeriodSeconds = 30f;
+    public float ConnectionGracePeriodSeconds = 60f;
+    public float AdmissionGracePeriodSeconds = -1f;
 
     [Header("Logging")]
     public bool LogBackfillUpdates = true;
@@ -39,7 +43,7 @@ public class BackfillServerHandlerExample : MonoBehaviour
         > MatchmakingServer;
 
     private bool BackfillRunning = false;
-    private int UnprocessedRequests = 0;
+    private DateTime BackfillStartAt;
     private BackfillAttributes BackfillAttributes;
     private SafeHttpRequest Request;
 
@@ -61,7 +65,6 @@ public class BackfillServerHandlerExample : MonoBehaviour
         }
     }
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
         IDictionary envs = Environment.GetEnvironmentVariables();
@@ -130,10 +133,13 @@ public class BackfillServerHandlerExample : MonoBehaviour
                 this,
                 BaseUrl,
                 AuthToken,
+                MatchEnvs.MatchProfile,
+                BackfillAttributes,
                 TargetPlayerCount,
                 RequestTimeoutSeconds,
                 PollingBackoffSeconds,
-                MaxConsecutivePollingErrors,
+                ExpirationPeriodSeconds,
+                ConnectionGracePeriodSeconds,
                 LogBackfillUpdates,
                 LogPollingUpdates
             );
@@ -148,7 +154,13 @@ public class BackfillServerHandlerExample : MonoBehaviour
                 {
                     if (message == "healthy")
                     {
-                        BackfillRunning = true;
+                        if (!BackfillRunning)
+                        {
+                            BackfillRunning = true;
+                            BackfillStartAt = DateTime.Now;
+                        }
+                        
+                        MatchmakingServer.AddBackfills();
                     }
                     else
                     {
@@ -176,14 +188,18 @@ public class BackfillServerHandlerExample : MonoBehaviour
                         // todo handling
                     }
 
-                    if (message.Contains("create"))
+                    if (
+                        action == ObservableActionType.Update
+                        && message.Contains("create")
+                    )
                     {
-                        UnprocessedRequests -= 1;
+                        // todo handling
                     }
                 }
             );
 
-            // todo listen for leaving players & their ticketID => MatchmakingServer.RemoveAssignment(ticketID);
+            // todo listen for joining players & their ticketID => OnPlayerConnecting
+            // todo listen for leaving players => OnPlayerLeaving
 
             L.Log(
                 $"MM ServerHandler | Started successfully for deployment '{DeploymentEnvs.RequestID}'."
@@ -193,24 +209,20 @@ public class BackfillServerHandlerExample : MonoBehaviour
 
     void Update()
     {
-        if (BackfillRunning && MatchmakingServer.Assignments.Count == 0)
+        if (BackfillRunning)
         {
-            StopBackfill(() =>
+            if (MatchmakingServer.Assignments.Count == 0)
             {
-                StopServer();
-            });
-        }
-
-        if (
-            BackfillRunning
-            && TargetPlayerCount > 0
-            && MatchmakingServer.Assignments.Count
-                + MatchmakingServer.Backfills.Current.Count
-                + UnprocessedRequests
-                < TargetPlayerCount
-        )
-        {
-            StartNewBackfill();
+                StopBackfill(StopServer);
+            }
+            else if (AdmissionGracePeriodSeconds > 0 && (DateTime.Now - BackfillStartAt).TotalSeconds >= AdmissionGracePeriodSeconds)
+            {
+                StopBackfill(() => 
+                    {
+                        // todo extend with custom code to decide if new connections are still accepted
+                    }
+                );
+            }
         }
     }
 
@@ -219,19 +231,6 @@ public class BackfillServerHandlerExample : MonoBehaviour
         if (!enabled)
             return;
         StopBackfill();
-    }
-
-    public void StartNewBackfill()
-    {
-        UnprocessedRequests += 1;
-
-        MyBackfillRequestDTO backfill = new MyBackfillRequestDTO(
-            MatchEnvs.MatchProfile,
-            BackfillAttributes,
-            MatchmakingServer.Assignments
-        );
-
-        MatchmakingServer.AddBackfill(backfill);
     }
 
     public void StopBackfill(Action onCompletedDelegate = null)
@@ -255,5 +254,18 @@ public class BackfillServerHandlerExample : MonoBehaviour
             },
             new RetryParameters { MaxAttempts = 10 }
         );
+    }
+
+    public void OnPlayerConnecting(string ticketID)
+    {
+        BackfillAssignedTicket<MyTicketsAttributes> ticket = MatchmakingServer.PlayerConnected(ticketID);
+
+        // todo if ticket is null, kick/ban/reject connection through netcode-specific methods
+        // otherwise map the connection with the ticketID
+    }
+
+    public void OnPlayerLeaving()
+    {
+        // todo get ticketID from connection - ticketID mapping => MatchmakingServer.AbandonPlayer(ticketID);
     }
 }
