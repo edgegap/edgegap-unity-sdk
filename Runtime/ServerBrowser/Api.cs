@@ -114,7 +114,7 @@ namespace Edgegap.ServerBrowser
             {
                 { $"$filter={filter?.ToString() ?? ""}" },
                 { $"$order={order}" },
-                { $"$limit={limit}" },
+                { $"limit={limit}" },
             };
             if (cursor != null)
             {

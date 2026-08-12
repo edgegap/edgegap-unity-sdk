@@ -41,7 +41,13 @@ namespace Edgegap.ServerBrowser
             int requestTimeoutSeconds = 3
         )
         {
+            if (handler == null)
+            {
+                throw new Exception("ServerAgent Handler not assigned.");
+            }
+
             Handler = handler;
+
             BaseUrl = baseUrl;
             AuthToken = authToken;
 
@@ -211,10 +217,6 @@ namespace Edgegap.ServerBrowser
                     {
                         Instances._Error($"seats reservation failed (reached capacity)");
                     }
-                    else if (request.responseCode == 409)
-                    {
-                        Instances._Error($"seats reservation failed (duplicate)");
-                    }
                     else
                     {
                         Instances._Error($"seats reservation failed\n{error}");
@@ -247,10 +249,6 @@ namespace Edgegap.ServerBrowser
                     else if (request.responseCode == 409)
                     {
                         Instances._Error($"seats reservation failed (reached capacity)");
-                    }
-                    else if (request.responseCode == 409)
-                    {
-                        Instances._Error($"seats reservation failed (duplicate)");
                     }
                     else
                     {

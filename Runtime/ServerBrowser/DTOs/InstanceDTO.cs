@@ -17,6 +17,15 @@ namespace Edgegap.ServerBrowser
         [JsonProperty("updated_at")]
         public DateTime UpdatedAt;
 
+        [JsonProperty("total_available_seats")]
+        public int TotalAvailableSeats;
+
+        [JsonProperty("total_joinable_seats")]
+        public int TotalJoinableSeats;
+
+        [JsonProperty("total_reserved_seats")]
+        public int TotalReservedSeats;
+
         [JsonProperty("metadata")]
         public InstanceMetadata Metadata;
 
@@ -53,6 +62,12 @@ namespace Edgegap.ServerBrowser
 
         [JsonProperty("pagination")]
         public PaginationDTO Pagination;
+
+        public InstanceListResponseDTO()
+        {
+            ServerInstances = new List<InstanceDTO<InstanceMetadata, SlotMetadata>>();
+            Pagination = new PaginationDTO() { PageSize = 0, Count = 0 };
+        }
 
         public override string ToString()
         {

@@ -121,9 +121,7 @@ namespace Edgegap.Matchmaking
             Handler.StartCoroutine(GetLatencies(beacons, onCompleteDelegate, requests));
         }
 
-        [Obsolete(
-            "Managing tickets in clients is deprecated, see the Group Up flow instead"
-        )]
+        [Obsolete("Managing tickets in clients is deprecated, see the Group Up flow instead")]
         public void StartMatchmaking(T ticket, bool abandon = false)
         {
             if (Assignment.Current is not null && !abandon)
@@ -151,9 +149,7 @@ namespace Edgegap.Matchmaking
             });
         }
 
-        [Obsolete(
-            "Managing tickets in clients is deprecated, see the Group Up flow instead"
-        )]
+        [Obsolete("Managing tickets in clients is deprecated, see the Group Up flow instead")]
         public void ResumeMatchmaking(TicketResponseDTO assignment, bool abandon = false)
         {
             if (Assignment.Current is not null && !abandon)
@@ -218,9 +214,7 @@ namespace Edgegap.Matchmaking
             ResumeMatchmaking(assignment, abandon);
         }
 
-        [Obsolete(
-            "Managing tickets in clients is deprecated, see the Group Up flow instead"
-        )]
+        [Obsolete("Managing tickets in clients is deprecated, see the Group Up flow instead")]
         public void StopMatchmaking(Action onCompletedDelegate = null)
         {
             Polling = false;
@@ -272,9 +266,7 @@ namespace Edgegap.Matchmaking
         #endregion
 
         #region Initialization
-        [Obsolete(
-            "Managing tickets in clients is deprecated, see the Group Up flow instead"
-        )]
+        [Obsolete("Managing tickets in clients is deprecated, see the Group Up flow instead")]
         public void Initialize(
             UnityAction<
                 Observable<MonitorResponseDTO>,
