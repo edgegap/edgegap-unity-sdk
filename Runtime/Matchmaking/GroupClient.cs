@@ -236,7 +236,7 @@ namespace Edgegap.Matchmaking
         {
             Polling = false;
 
-            if (Group.Current is null)
+            if (Group.Current is null || Group.Current.GroupID is null)
             {
                 if (onCompletedDelegate is not null)
                 {

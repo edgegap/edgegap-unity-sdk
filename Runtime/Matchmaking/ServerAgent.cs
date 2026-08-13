@@ -340,7 +340,7 @@ namespace Edgegap.Matchmaking
 
             foreach (InjectedTicketDTO<A> t in tickets.Values)
             {
-                AddAssignment((BackfillAssignedTicket<A>)t);
+                AddAssignment(t);
             }
 
             Status();
@@ -388,11 +388,20 @@ namespace Edgegap.Matchmaking
             }
         }
 
-        internal void AddAssignment(BackfillAssignedTicket<A> ticket)
+        internal void AddAssignment(InjectedTicketDTO<A> ticket)
         {
-            ticket.AssignedAt = DateTime.Now;
-            Assignments[ticket.ID] = ticket;
-            Handler.StartCoroutine(DelayMethod(() => CheckTicketConnection(ticket.ID)));
+            BackfillAssignedTicket<A> assignment = new BackfillAssignedTicket<A>()
+            {
+                ID = ticket.ID,
+                CreatedAt = ticket.CreatedAt,
+                PlayerIP = ticket.PlayerIP,
+                GroupID = ticket.GroupID,
+                Attributes = ticket.Attributes,
+                AssignedAt = DateTime.Now,
+            };
+
+            Assignments[assignment.ID] = assignment;
+            Handler.StartCoroutine(DelayMethod(() => CheckTicketConnection(assignment.ID)));
         }
 
         internal void StartNewBackfill()
@@ -426,7 +435,7 @@ namespace Edgegap.Matchmaking
                     {
                         if (backfill.Status == "ASSIGNED")
                         {
-                            AddAssignment((BackfillAssignedTicket<A>)backfill.AssignedTicket);
+                            AddAssignment(backfill.AssignedTicket);
 
                             Handler.StartCoroutine(
                                 ExpireBackfill(

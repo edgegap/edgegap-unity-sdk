@@ -171,7 +171,7 @@ public class BackfillClientHandlerExample : MonoBehaviour
 
     public void StartMatchmaking(Dictionary<string, float> pings, bool isReady)
     {
-        MatchmakingClient.CreateGroup(new MyGroupUpRequestDTO(pings, BackfillGroupSize, isReady));
+        MatchmakingClient.CreateGroup(new MyGroupUpRequestDTO(pings, BackfillGroupSize, isReady), true);
     }
 
     public void StopMatchmaking()
