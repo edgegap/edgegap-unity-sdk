@@ -173,7 +173,7 @@ namespace Edgegap.Matchmaking
 
         public void AddBackfills()
         {
-            int nbBackfills = Assignments.Count + Backfills.Current.Count - TargetTeamSize;
+            int nbBackfills = TargetTeamSize - (Assignments.Count + Backfills.Current.Count);
 
             for (int i = 0; i < nbBackfills; ++i)
             {
@@ -521,15 +521,12 @@ namespace Edgegap.Matchmaking
                 DateTime.Now - Assignments[ticketID].AssignedAt
             )?.TotalSeconds;
 
-            if (
-                Assignments[ticketID].JoinedAt is null
-                && timeSinceAssigned >= ConnectionGracePeriodSeconds
-            )
+            if (timeSinceAssigned >= ConnectionGracePeriodSeconds)
             {
                 L.Log($"MM | Backfill - connection grace period expired [{ticketID}]");
                 AbandonPlayer(ticketID);
             }
-            else
+            else if (Assignments[ticketID].JoinedAt is null)
             {
                 Handler.StartCoroutine(DelayMethod(() => CheckTicketConnection(ticketID)));
             }
