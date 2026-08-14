@@ -7,7 +7,15 @@ namespace Edgegap.ServerBrowser
 
     public class FilterCompiler
     {
-        public List<FilterBase> Filters = new List<FilterBase>();
+        public List<FilterBase> Filters;
+
+        public FilterCompiler(List<FilterBase> filters)
+        {
+            if (filters is null || filters.Count == 0)
+            {
+                throw new System.Exception("Edgegap SDK FilterCompiler | Filters cannot be empty.");
+            }
+        }
 
         public override string ToString()
         {
@@ -17,12 +25,13 @@ namespace Edgegap.ServerBrowser
 
     public abstract class FilterBase
     {
+        public string Field;
+
         public abstract override string ToString();
     }
 
     public abstract class Filter<T> : FilterBase
     {
-        public string Field;
         public string Operator;
         public T Value;
 
@@ -45,6 +54,16 @@ namespace Edgegap.ServerBrowser
     public class FloatFilter : Filter<float> { }
 
     public class BoolFilter : Filter<bool> { }
+
+    public class LiteralFilter : FilterBase
+    {
+        public List<string> Value;
+
+        public override string ToString()
+        {
+            return $"{Field} in ({string.Join(",", Value.Select(x => $"'{x}'"))})";
+        }
+    }
 
     public static class StringOperator
     {
