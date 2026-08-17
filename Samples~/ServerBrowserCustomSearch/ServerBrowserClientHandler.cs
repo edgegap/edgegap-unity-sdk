@@ -57,9 +57,8 @@ public class ServerBrowserClientHandler : MonoBehaviour
                 {
                     // todo move ListInstances to a UI trigger
                     ClientAgent.ListInstances(
-                        new FilterCompiler()
-                        {
-                            Filters = new List<FilterBase>()
+                        new FilterCompiler(
+                            new List<FilterBase>()
                             {
                                 new IntFilter()
                                 {
@@ -67,8 +66,14 @@ public class ServerBrowserClientHandler : MonoBehaviour
                                     Operator = IntOperator._GreaterThanOrEqualTo,
                                     Value = 1,
                                 },
-                            },
-                        }
+                            }
+                        ),
+                        new SortCompiler(
+                            new List<SortBase>()
+                            {
+                                new SimpleSort("total_joinable_seats", SortDirection._Descending),
+                            }
+                        )
                     );
                 }
                 else if (action == ObservableActionType.Error || message == "unhealthy")

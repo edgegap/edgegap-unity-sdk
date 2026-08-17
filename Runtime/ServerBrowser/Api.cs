@@ -17,6 +17,7 @@ namespace Edgegap.ServerBrowser
         internal string BaseUrl;
 
         internal string PATH_MONITOR = "monitor";
+        internal string PATH_BEACONS = "locations/beacons";
         internal string PATH_SERVER_INSTANCES = "server-instances";
         internal string PATH_KEEP_ALIVE = "keep-alive";
         internal string PATH_SLOTS = "slots";
@@ -63,6 +64,34 @@ namespace Edgegap.ServerBrowser
             );
         }
 
+        public void GetBeacons(
+            Action<BeaconsResponseDTO, UnityWebRequest> onSuccessDelegate,
+            Action<string, UnityWebRequest> onErrorDelegate
+        )
+        {
+            Request.Get(
+                $"{BaseUrl}/{PATH_BEACONS}",
+                AuthToken,
+                (string response, UnityWebRequest request) =>
+                {
+                    try
+                    {
+                        BeaconsResponseDTO beacons =
+                            JsonConvert.DeserializeObject<BeaconsResponseDTO>(response);
+                        onSuccessDelegate(beacons, request);
+                    }
+                    catch (Exception e)
+                    {
+                        L.Error(
+                            $"Matchmaking | Couldn't parse beacons, update Edgegap SDK.\n{e.Message}"
+                        );
+                        throw;
+                    }
+                },
+                onErrorDelegate
+            );
+        }
+
         public void CreateServerInstance(
             InstanceDTO<ServerInstanceMetadata, SlotMetadata> serverInstance,
             Action<
@@ -95,6 +124,28 @@ namespace Edgegap.ServerBrowser
                     }
                 },
                 onErrorDelegate
+            );
+        }
+
+        public void ListServerInstances(
+            Action<
+                InstanceListResponseDTO<ServerInstanceMetadata, SlotMetadata>,
+                UnityWebRequest
+            > onSuccessDelegate,
+            Action<string, UnityWebRequest> onErrorDelegate,
+            string cursor = null,
+            FilterCompiler filter = null,
+            SortCompiler order = null,
+            uint limit = 20
+        )
+        {
+            ListServerInstances(
+                onSuccessDelegate,
+                onErrorDelegate,
+                cursor,
+                filter,
+                order?.ToString(),
+                limit
             );
         }
 
