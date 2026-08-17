@@ -15,6 +15,8 @@ namespace Edgegap.ServerBrowser
             {
                 throw new System.Exception("Edgegap SDK FilterCompiler | Filters cannot be empty.");
             }
+
+            Filters = filters;
         }
 
         public override string ToString()
@@ -26,7 +28,6 @@ namespace Edgegap.ServerBrowser
     public abstract class FilterBase
     {
         public string Field;
-
         public abstract override string ToString();
     }
 
@@ -61,7 +62,7 @@ namespace Edgegap.ServerBrowser
 
         public override string ToString()
         {
-            return $"{Field} in ({string.Join(",", Value.Select(x => $"'{x}'"))})";
+            return $"{Field} in ({string.Join(",", Value.Select(f => $"'{f}'"))})";
         }
     }
 

@@ -30,9 +30,15 @@ namespace Edgegap.ServerBrowser
         public abstract override string ToString();
     }
 
-    public abstract class SimpleSort : SortBase
+    public class SimpleSort : SortBase
     {
         public string Direction;
+
+        public SimpleSort(string field, string direction)
+        {
+            Field = field;
+            Direction = direction;
+        }
 
         public override string ToString()
         {
