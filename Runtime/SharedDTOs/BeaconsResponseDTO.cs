@@ -1,6 +1,6 @@
 using Newtonsoft.Json;
 
-namespace Edgegap.Matchmaking
+namespace Edgegap
 {
     public class BeaconsResponseDTO
     {

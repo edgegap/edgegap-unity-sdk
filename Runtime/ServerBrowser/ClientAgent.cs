@@ -112,6 +112,16 @@ namespace Edgegap.ServerBrowser
 
         public void ListInstances(
             FilterCompiler filter = null,
+            SortCompiler order = null,
+            uint limit = 20,
+            string cursor = null
+        )
+        {
+            ListInstances(filter, order?.ToString(), limit, cursor);
+        }
+
+        public void ListInstances(
+            FilterCompiler filter = null,
             string order = "",
             uint limit = 20,
             string cursor = null
