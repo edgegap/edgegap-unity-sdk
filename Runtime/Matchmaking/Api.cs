@@ -6,6 +6,7 @@ using UnityEngine.Networking;
 
 namespace Edgegap.Matchmaking
 {
+    using BeaconsResponseDTO = Edgegap.BeaconsResponseDTO;
     using L = Logger;
 
     public class Api
