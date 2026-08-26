@@ -37,10 +37,7 @@ public class BackfillServerHandlerExample : MonoBehaviour
     public bool LogPollingUpdates = false;
     #endregion
 
-    public ServerAgent<
-            MyBackfillRequestDTO,
-            MyTicketsAttributes
-        > MatchmakingServer;
+    public ServerAgent<MyTicketsAttributes> MatchmakingServer;
 
     private bool BackfillRunning = false;
     private DateTime BackfillStartAt;
@@ -74,7 +71,6 @@ public class BackfillServerHandlerExample : MonoBehaviour
 #if UNITY_EDITOR
         MockEnv = true;
 #endif
-            
         MockEnv = MockEnv || !string.IsNullOrEmpty(envs["ARBITRIUM_MOCK_ENV"]?.ToString());
 
         if (MockEnv)
@@ -82,10 +78,14 @@ public class BackfillServerHandlerExample : MonoBehaviour
             // define mock env variables here
             envs["MM_MATCH_PROFILE"] = "backfill-example";
             envs["MM_TICKET_IDS"] = "[\"cusfn10msflc73beiik0\",\"cusfn18msflc73beiil0\"]";
-            envs["MM_TICKET_cusfn10msflc73beiik0"] = "{\"id\":\"cusfn10msflc73beiik0\",\"created_at\":\"2025-02-21T22:17:42.3886970Z\",\"player_ip\":\"174.93.233.25\",\"group_id\":\"b2080c27-19c9-4fb0-8fe7-4bf1e5d285d1\",\"team_id\":\"cusfn1gmsflc73beiim0\",\"attributes\":{\"beacons\":{\"Chicago\":12.3,\"LosAngeles\":145.6,\"Tokyo\":233.2},\"backfill_group_size\":[\"new\",\"1\"]}}";
-            envs["MM_TICKET_cusfn18msflc73beiil0"] = "{\"id\":\"cusfn18msflc73beiil0\",\"created_at\":\"2025-02-21T22:17:42.2548390Z\",\"player_ip\":\"174.93.233.23\",\"group_id\":\"015d4dc8-6c79-4b5c-bbc6-f309b9787c8f\",\"team_id\":\"cusfn1gmsflc73beiim0\",\"attributes\":{\"beacons\":{\"Chicago\":87.3,\"LosAngeles\":32.4,\"Tokyo\":253.2},\"backfill_group_size\":[\"new\",\"1\"]}}";
-            envs["MM_GROUPS"] = "{\"b2080c27-19c9-4fb0-8fe7-4bf1e5d285d1\":[\"cusfn10msflc73beiik0\"],\"015d4dc8-6c79-4b5c-bbc6-f309b9787c8f\":[\"cusfn18msflc73beiil0\"]}";
-            envs["MM_TEAMS"] = "{\"cusfn1gmsflc73beiim0\":[\"b2080c27-19c9-4fb0-8fe7-4bf1e5d285d1\",\"015d4dc8-6c79-4b5c-bbc6-f309b9787c8f\"]}";
+            envs["MM_TICKET_cusfn10msflc73beiik0"] =
+                "{\"id\":\"cusfn10msflc73beiik0\",\"created_at\":\"2025-02-21T22:17:42.3886970Z\",\"player_ip\":\"174.93.233.25\",\"group_id\":\"b2080c27-19c9-4fb0-8fe7-4bf1e5d285d1\",\"team_id\":\"cusfn1gmsflc73beiim0\",\"attributes\":{\"beacons\":{\"Chicago\":12.3,\"LosAngeles\":145.6,\"Tokyo\":233.2},\"backfill_group_size\":[\"new\",\"1\"]}}";
+            envs["MM_TICKET_cusfn18msflc73beiil0"] =
+                "{\"id\":\"cusfn18msflc73beiil0\",\"created_at\":\"2025-02-21T22:17:42.2548390Z\",\"player_ip\":\"174.93.233.23\",\"group_id\":\"015d4dc8-6c79-4b5c-bbc6-f309b9787c8f\",\"team_id\":\"cusfn1gmsflc73beiim0\",\"attributes\":{\"beacons\":{\"Chicago\":87.3,\"LosAngeles\":32.4,\"Tokyo\":253.2},\"backfill_group_size\":[\"new\",\"1\"]}}";
+            envs["MM_GROUPS"] =
+                "{\"b2080c27-19c9-4fb0-8fe7-4bf1e5d285d1\":[\"cusfn10msflc73beiik0\"],\"015d4dc8-6c79-4b5c-bbc6-f309b9787c8f\":[\"cusfn18msflc73beiil0\"]}";
+            envs["MM_TEAMS"] =
+                "{\"cusfn1gmsflc73beiim0\":[\"b2080c27-19c9-4fb0-8fe7-4bf1e5d285d1\",\"015d4dc8-6c79-4b5c-bbc6-f309b9787c8f\"]}";
 
             envs["ARBITRIUM_REQUEST_ID"] = "editor";
             envs["ARBITRIUM_PUBLIC_IP"] = "localhost";
@@ -95,7 +95,7 @@ public class BackfillServerHandlerExample : MonoBehaviour
             envs["ARBITRIUM_DEPLOYMENT_MEMORY_MB"] = "3072";
             envs["ARBITRIUM_DEPLOYMENT_LOCATION"] =
                 "{\"city\":\"Chicago\",\"country\":\"United States of America\",\"continent\":\"North America\",\"administrative_division\":\"Illinois\",\"timezone\":\"Central Time\"}";
-                
+
             // todo edit external port value
             envs["ARBITRIUM_PORTS_MAPPING"] =
                 "{\"ports\":{\"gameport\":{\"name\":\"GamePort\",\"internal\":7777,\"external\":31504,\"protocol\":\"UDP\"}}}";
@@ -126,10 +126,7 @@ public class BackfillServerHandlerExample : MonoBehaviour
         }
         else
         {
-            MatchmakingServer = new ServerAgent<
-                MyBackfillRequestDTO,
-                MyTicketsAttributes
-            >(
+            MatchmakingServer = new ServerAgent<MyTicketsAttributes>(
                 this,
                 BaseUrl,
                 AuthToken,
@@ -159,7 +156,7 @@ public class BackfillServerHandlerExample : MonoBehaviour
                             BackfillRunning = true;
                             BackfillStartAt = DateTime.Now;
                         }
-                        
+
                         MatchmakingServer.AddBackfills();
                     }
                     else
@@ -170,15 +167,14 @@ public class BackfillServerHandlerExample : MonoBehaviour
                     }
                 },
                 (
-                    Observable<Dictionary<string, BackfillResponseDTO<MyTicketsAttributes>>> backfills,
+                    Observable<
+                        Dictionary<string, BackfillResponseDTO<MyTicketsAttributes>>
+                    > backfills,
                     ObservableActionType action,
                     string message
                 ) =>
                 {
-                    if (
-                        action == ObservableActionType.Update
-                        && message.Contains("assigned")
-                    )
+                    if (action == ObservableActionType.Update && message.Contains("assigned"))
                     {
                         // todo handling
                     }
@@ -188,10 +184,7 @@ public class BackfillServerHandlerExample : MonoBehaviour
                         // todo handling
                     }
 
-                    if (
-                        action == ObservableActionType.Update
-                        && message.Contains("create")
-                    )
+                    if (action == ObservableActionType.Update && message.Contains("create"))
                     {
                         // todo handling
                     }
@@ -215,13 +208,14 @@ public class BackfillServerHandlerExample : MonoBehaviour
             {
                 StopBackfill(StopServer);
             }
-            else if (AdmissionGracePeriodSeconds > 0 && (DateTime.Now - BackfillStartAt).TotalSeconds >= AdmissionGracePeriodSeconds)
+            else if (
+                AdmissionGracePeriodSeconds > 0
+                && (DateTime.Now - BackfillStartAt).TotalSeconds >= AdmissionGracePeriodSeconds
+            )
             {
-                StopBackfill(() => 
-                    {
-                        // todo extend with custom code to decide if new connections are still accepted
-                    }
-                );
+                StopBackfill(() => {
+                    // todo extend with custom code to decide if new connections are still accepted
+                });
             }
         }
     }
@@ -258,7 +252,9 @@ public class BackfillServerHandlerExample : MonoBehaviour
 
     public void OnPlayerConnecting(string ticketID)
     {
-        BackfillAssignedTicket<MyTicketsAttributes> ticket = MatchmakingServer.PlayerConnected(ticketID);
+        BackfillAssignedTicket<MyTicketsAttributes> ticket = MatchmakingServer.PlayerConnected(
+            ticketID
+        );
 
         // todo if ticket is null, kick/ban/reject connection through netcode-specific methods
         // otherwise map the connection with the ticketID

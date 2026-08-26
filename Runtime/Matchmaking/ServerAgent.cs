@@ -10,8 +10,7 @@ namespace Edgegap.Matchmaking
 {
     using L = Logger;
 
-    public class ServerAgent<B, A>
-        where B : BackfillRequestDTO<A>
+    public class ServerAgent<A>
     {
         private Api MatchmakingApi;
 
@@ -398,9 +397,13 @@ namespace Edgegap.Matchmaking
                 return;
             }
 
-            B backfill = new B(Profile, BackfillAttributes, Assignments); // TODO wip
+            BackfillRequestDTO<A> backfill = new BackfillRequestDTO<A>(
+                Profile,
+                BackfillAttributes,
+                Assignments
+            );
 
-            MatchmakingApi.CreateBackfill<B, A>(
+            MatchmakingApi.CreateBackfill(
                 backfill,
                 (BackfillResponseDTO<A> backfillRes, UnityWebRequest request) =>
                 {

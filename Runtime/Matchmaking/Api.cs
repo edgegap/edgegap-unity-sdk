@@ -392,12 +392,11 @@ namespace Edgegap.Matchmaking
         #endregion
 
         #region Server Backfill
-        public void CreateBackfill<B, A>(
-            B backfill,
+        public void CreateBackfill<A>(
+            BackfillRequestDTO<A> backfill,
             Action<BackfillResponseDTO<A>, UnityWebRequest> onSuccessDelegate,
             Action<string, UnityWebRequest> onErrorDelegate
         )
-            where B : BackfillRequestDTO<A>
         {
             Request.Post(
                 $"{BaseUrl}/{PATH_BACKFILL}",

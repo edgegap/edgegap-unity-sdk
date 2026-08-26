@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace Edgegap.Matchmaking
 {
-    public abstract class BackfillRequestDTO<A>
+    public class BackfillRequestDTO<A>
     {
         [JsonProperty("profile")]
         public string Profile;
