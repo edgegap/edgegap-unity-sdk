@@ -6,11 +6,9 @@ using Edgegap.Matchmaking;
 using UnityEngine;
 using UnityEngine.Networking;
 using L = Edgegap.Logger;
-using MyBackfillRequestDTO = Edgegap.Matchmaking.SimpleBackfillRequestDTO;
 using MyTicketsAttributes = Edgegap.Matchmaking.BackfillTicketAttributesDTO;
 
 // todo replace BackfillTicketAttributesDTO with CustomTicketsAttributes
-// todo replace SimpleBackfillRequestDTO with CustomBackfillRequestDTO
 
 public class BackfillServerHandlerExample : MonoBehaviour
 {
@@ -40,7 +38,6 @@ public class BackfillServerHandlerExample : MonoBehaviour
     public ServerAgent<MyTicketsAttributes> MatchmakingServer;
 
     private bool BackfillRunning = false;
-    private DateTime BackfillStartAt;
     private BackfillAttributes BackfillAttributes;
     private SafeHttpRequest Request;
 
@@ -153,11 +150,9 @@ public class BackfillServerHandlerExample : MonoBehaviour
                     {
                         if (!BackfillRunning)
                         {
-                            BackfillRunning = true;
-                            BackfillStartAt = DateTime.Now;
+                            StartCoroutine(OnEnableBackfillRoutine());
+                            MatchmakingServer.AddBackfills();
                         }
-
-                        MatchmakingServer.AddBackfills();
                     }
                     else
                     {
@@ -208,15 +203,6 @@ public class BackfillServerHandlerExample : MonoBehaviour
             {
                 StopBackfill(StopServer);
             }
-            else if (
-                AdmissionGracePeriodSeconds > 0
-                && (DateTime.Now - BackfillStartAt).TotalSeconds >= AdmissionGracePeriodSeconds
-            )
-            {
-                StopBackfill(() => {
-                    // todo extend with custom code to decide if new connections are still accepted
-                });
-            }
         }
     }
 
@@ -263,5 +249,24 @@ public class BackfillServerHandlerExample : MonoBehaviour
     public void OnPlayerLeaving()
     {
         // todo get ticketID from connection - ticketID mapping => MatchmakingServer.AbandonPlayer(ticketID);
+    }
+
+    private IEnumerator OnEnableBackfillRoutine()
+    {
+        BackfillRunning = true;
+
+        if (AdmissionGracePeriodSeconds <= 0)
+        {
+            yield break;
+        }
+
+        yield return new WaitForSecondsRealtime(AdmissionGracePeriodSeconds);
+        enabled = false;
+
+        StopBackfill(() =>
+        {
+            // todo extend with custom code to decide if new connections are still accepted
+        }
+        );
     }
 }

@@ -182,44 +182,42 @@ namespace Edgegap.Matchmaking
                 (UnityWebRequest request) =>
                 {
                     Handler.StartCoroutine(
-                        ExpireBackfill(
-                            backfillID,
-                            (
-                                bool backfillExpired,
-                                Dictionary<string, BackfillResponseDTO<A>> updatedBackfills
-                            ) =>
+                        DelayMethod(
+                            () =>
                             {
+                                Dictionary<string, BackfillResponseDTO<A>> temp = new Dictionary<
+                                    string,
+                                    BackfillResponseDTO<A>
+                                >(Backfills.Current);
+
                                 OnBackfillExpired(
                                     backfillID,
-                                    backfillExpired,
-                                    updatedBackfills,
+                                    temp.Remove(backfillID),
                                     () =>
                                     {
-                                        Backfills._Update(
-                                            updatedBackfills,
-                                            $"abandoned [{backfillID}]"
-                                        );
+                                        Backfills._Update(temp, $"abandoned [{backfillID}]");
                                     },
                                     onCompletedDelegate
                                 );
-                            }
+                            },
+                            0f
                         )
                     );
                 },
                 (string error, UnityWebRequest request) =>
                 {
                     Handler.StartCoroutine(
-                        ExpireBackfill(
-                            backfillID,
-                            (
-                                bool backfillExpired,
-                                Dictionary<string, BackfillResponseDTO<A>> updatedBackfills
-                            ) =>
+                        DelayMethod(
+                            () =>
                             {
+                                Dictionary<string, BackfillResponseDTO<A>> temp = new Dictionary<
+                                    string,
+                                    BackfillResponseDTO<A>
+                                >(Backfills.Current);
+
                                 OnBackfillExpired(
                                     backfillID,
-                                    backfillExpired,
-                                    updatedBackfills,
+                                    temp.Remove(backfillID),
                                     () =>
                                     {
                                         if (request.responseCode == 404)
@@ -233,13 +231,14 @@ namespace Edgegap.Matchmaking
                                         {
                                             Backfills._Error(
                                                 $"abandon failed [{backfillID}]\n{error}",
-                                                updatedBackfills
+                                                temp
                                             );
                                         }
                                     },
                                     onCompletedDelegate
                                 );
-                            }
+                            },
+                            0f
                         )
                     );
                 }
@@ -257,20 +256,20 @@ namespace Edgegap.Matchmaking
             foreach (KeyValuePair<string, BackfillResponseDTO<A>> b in temp)
             {
                 Handler.StartCoroutine(
-                    ExpireBackfill(
-                        b.Key,
-                        (
-                            bool backfillExpired,
-                            Dictionary<string, BackfillResponseDTO<A>> updatedBackfills
-                        ) =>
+                    DelayMethod(
+                        () =>
                         {
+                            Dictionary<string, BackfillResponseDTO<A>> temp = new Dictionary<
+                                string,
+                                BackfillResponseDTO<A>
+                            >(Backfills.Current);
+
                             OnBackfillExpired(
                                 b.Key,
-                                backfillExpired,
-                                updatedBackfills,
+                                temp.Remove(b.Key),
                                 () =>
                                 {
-                                    Backfills._Update(updatedBackfills, $"abandoned [{b.Key}]");
+                                    Backfills._Update(temp, $"abandoned [{b.Key}]");
                                 },
                                 () =>
                                 {
@@ -283,7 +282,8 @@ namespace Edgegap.Matchmaking
                                     }
                                 }
                             );
-                        }
+                        },
+                        0f
                     )
                 );
             }
@@ -334,26 +334,9 @@ namespace Edgegap.Matchmaking
 
         #region Internals
 
-        internal IEnumerator ExpireBackfill(
-            string backfillID,
-            Action<bool, Dictionary<string, BackfillResponseDTO<A>>> onCompletedDelegate,
-            float delaySeconds = 0f
-        )
-        {
-            yield return new WaitForSeconds(delaySeconds);
-
-            Dictionary<string, BackfillResponseDTO<A>> temp = new Dictionary<
-                string,
-                BackfillResponseDTO<A>
-            >(Backfills.Current);
-
-            onCompletedDelegate(temp.Remove(backfillID), temp);
-        }
-
         internal void OnBackfillExpired(
             string backfillID,
             bool backfillExpired,
-            Dictionary<string, BackfillResponseDTO<A>> updatedBackfills,
             Action onExpiredSuccess,
             Action onCompletedDelegate = null
         )
@@ -452,26 +435,24 @@ namespace Edgegap.Matchmaking
                             AddAssignment(backfill.AssignedTicket);
 
                             Handler.StartCoroutine(
-                                ExpireBackfill(
-                                    b.ID,
-                                    (
-                                        bool backfillExpired,
-                                        Dictionary<string, BackfillResponseDTO<A>> updatedBackfills
-                                    ) =>
+                                DelayMethod(
+                                    () =>
                                     {
+                                        Dictionary<string, BackfillResponseDTO<A>> temp =
+                                            new Dictionary<string, BackfillResponseDTO<A>>(
+                                                Backfills.Current
+                                            );
+
                                         OnBackfillExpired(
                                             b.ID,
-                                            backfillExpired,
-                                            updatedBackfills,
+                                            temp.Remove(b.ID),
                                             () =>
                                             {
-                                                Backfills._Update(
-                                                    updatedBackfills,
-                                                    $"assigned [{b.ID}]"
-                                                );
+                                                Backfills._Update(temp, $"assigned [{b.ID}]");
                                             }
                                         );
-                                    }
+                                    },
+                                    0f
                                 )
                             );
                         }
@@ -494,27 +475,25 @@ namespace Edgegap.Matchmaking
                             );
 
                             Handler.StartCoroutine(
-                                ExpireBackfill(
-                                    b.ID,
-                                    (
-                                        bool backfillExpired,
-                                        Dictionary<string, BackfillResponseDTO<A>> updatedBackfills
-                                    ) =>
+                                DelayMethod(
+                                    () =>
                                     {
+                                        Dictionary<string, BackfillResponseDTO<A>> temp =
+                                            new Dictionary<string, BackfillResponseDTO<A>>(
+                                                Backfills.Current
+                                            );
+
                                         OnBackfillExpired(
                                             b.ID,
-                                            backfillExpired,
-                                            updatedBackfills,
+                                            temp.Remove(b.ID),
                                             () =>
                                             {
-                                                Backfills._Update(
-                                                    updatedBackfills,
-                                                    $"abandoned [{b.ID}]"
-                                                );
+                                                Backfills._Update(temp, $"abandoned [{b.ID}]");
                                             },
                                             StartNewBackfill
                                         );
-                                    }
+                                    },
+                                    0f
                                 )
                             );
                         }
@@ -546,9 +525,11 @@ namespace Edgegap.Matchmaking
             }
         }
 
-        internal IEnumerator DelayMethod(Action onDelayFinished)
+        internal IEnumerator DelayMethod(Action onDelayFinished, float? delaySeconds = null)
         {
-            yield return new WaitForSeconds(PollingBackoffSeconds + (0.1f * Random.value));
+            delaySeconds ??= PollingBackoffSeconds + (0.1f * Random.value);
+
+            yield return new WaitForSeconds((float)delaySeconds);
             onDelayFinished();
         }
         #endregion
