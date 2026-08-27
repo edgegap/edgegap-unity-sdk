@@ -25,7 +25,7 @@ namespace Edgegap.Matchmaking
 
         public int RequestTimeoutSeconds;
         public float PollingBackoffSeconds;
-        public float ExpirationPeriodSeconds;
+        public int MaxConsecutivePollingErrors;
         public float ConnectionGracePeriodSeconds;
 
         public bool LogBackfillUpdates;
@@ -56,7 +56,7 @@ namespace Edgegap.Matchmaking
             int targetTeamSize = -1,
             int requestTimeoutSeconds = 3,
             float pollingBackoffSeconds = 1f,
-            float expirationPeriodSeconds = 30f,
+            int maxConsecutivePollingErrors = 10,
             float connectionGracePeriodSeconds = 60f,
             bool logBackfillUpdates = true,
             bool logPollingUpdates = false
@@ -77,7 +77,7 @@ namespace Edgegap.Matchmaking
 
             RequestTimeoutSeconds = requestTimeoutSeconds;
             PollingBackoffSeconds = pollingBackoffSeconds;
-            ExpirationPeriodSeconds = expirationPeriodSeconds;
+            MaxConsecutivePollingErrors = maxConsecutivePollingErrors;
             ConnectionGracePeriodSeconds = connectionGracePeriodSeconds;
 
             LogBackfillUpdates = logBackfillUpdates;
@@ -403,7 +403,7 @@ namespace Edgegap.Matchmaking
                     if (!Polling && Backfills.Current.Count == 1)
                     {
                         Polling = true;
-                        Handler.StartCoroutine(DelayMethod(StartPollingBackfills));
+                        Handler.StartCoroutine(DelayMethod(() => StartPollingBackfills()));
                     }
                 },
                 (string error, UnityWebRequest request) =>
@@ -413,7 +413,7 @@ namespace Edgegap.Matchmaking
             );
         }
 
-        internal void StartPollingBackfills()
+        internal void StartPollingBackfills(int consecutiveErrors = 0)
         {
             if (!Polling)
             {
@@ -426,10 +426,19 @@ namespace Edgegap.Matchmaking
 
             foreach (BackfillResponseDTO<A> b in Backfills.Current.Values)
             {
+                if (LogPollingUpdates)
+                {
+                    Backfills._Notify(
+                        $"polling [{consecutiveErrors + 1}/{MaxConsecutivePollingErrors}]"
+                    );
+                }
+
                 MatchmakingApi.GetBackfill<A>(
                     b.ID,
                     (BackfillResponseDTO<A> backfill, UnityWebRequest request) =>
                     {
+                        consecutiveErrors = 0;
+
                         if (backfill.Status == "ASSIGNED")
                         {
                             AddAssignment(backfill.AssignedTicket);
@@ -459,11 +468,12 @@ namespace Edgegap.Matchmaking
                     },
                     (string error, UnityWebRequest request) =>
                     {
-                        if ((DateTime.Now - b.CreatedAt)?.TotalSeconds >= ExpirationPeriodSeconds)
+                        consecutiveErrors += 1;
+
+                        if (consecutiveErrors > MaxConsecutivePollingErrors)
                         {
-                            Backfills._Notify(
-                                $"backfill expiration period exceeded [{b.ID}]",
-                                ObservableActionType.Warn
+                            Backfills._Error(
+                                $"polling failed (reached maximum retries) [{b.ID}]\n{error}"
                             );
                             RemoveBackfill(b.ID, StartNewBackfill);
                         }
@@ -500,12 +510,13 @@ namespace Edgegap.Matchmaking
                         else if (request.responseCode != 429 && request.responseCode < 500)
                         {
                             Backfills._Error($"polling failed [{b.ID}]\n{error}");
+                            RemoveBackfill(b.ID, StartNewBackfill);
                         }
                     }
                 );
             }
 
-            Handler.StartCoroutine(DelayMethod(StartPollingBackfills));
+            Handler.StartCoroutine(DelayMethod(() => StartPollingBackfills(consecutiveErrors)));
         }
 
         internal void CheckTicketConnection(string ticketID)

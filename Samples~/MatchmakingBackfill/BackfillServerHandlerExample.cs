@@ -26,7 +26,7 @@ public class BackfillServerHandlerExample : MonoBehaviour
     public float PollingBackoffSeconds = 1f;
 
     [Header("Expiration and Grace Period")]
-    public float ExpirationPeriodSeconds = 30f;
+    public int MaxConsecutivePollingErrors = 10;
     public float ConnectionGracePeriodSeconds = 60f;
     public float AdmissionGracePeriodSeconds = -1f;
 
@@ -132,7 +132,7 @@ public class BackfillServerHandlerExample : MonoBehaviour
                 TargetPlayerCount,
                 RequestTimeoutSeconds,
                 PollingBackoffSeconds,
-                ExpirationPeriodSeconds,
+                MaxConsecutivePollingErrors,
                 ConnectionGracePeriodSeconds,
                 LogBackfillUpdates,
                 LogPollingUpdates
@@ -197,12 +197,9 @@ public class BackfillServerHandlerExample : MonoBehaviour
 
     void Update()
     {
-        if (BackfillRunning)
+        if (BackfillRunning && MatchmakingServer.Assignments.Count == 0)
         {
-            if (MatchmakingServer.Assignments.Count == 0)
-            {
-                StopBackfill(StopServer);
-            }
+            StopBackfill(StopServer);
         }
     }
 
