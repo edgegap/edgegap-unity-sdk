@@ -37,15 +37,28 @@ public class BackfillServerHandlerExample : MonoBehaviour
 
     public ServerAgent<MyTicketsAttributes> MatchmakingServer;
 
-    private bool BackfillRunning = false;
-    private BackfillAttributes BackfillAttributes;
-    private SafeHttpRequest Request;
-
     [Header("Environment")]
     public bool MockEnv = false;
     public DeploymentEnvironmentDTO DeploymentEnvs { get; private set; }
 
     public MatchEnvironmentDTO<MyTicketsAttributes> MatchEnvs { get; private set; }
+
+    private BackfillAttributes BackfillAttributes;
+    private SafeHttpRequest Request;
+
+    private bool BackfillRunning
+    {
+        get { return BackfillRunning; }
+        set
+        {
+            BackfillRunning = value;
+
+            if (value)
+            {
+                StartCoroutine(OnEnableBackfillRoutine());
+            }
+        }
+    }
 
     public void Awake()
     {
@@ -61,6 +74,7 @@ public class BackfillServerHandlerExample : MonoBehaviour
 
     void Start()
     {
+        BackfillRunning = false;
         IDictionary envs = Environment.GetEnvironmentVariables();
 
         #region mock data
@@ -150,7 +164,7 @@ public class BackfillServerHandlerExample : MonoBehaviour
                     {
                         if (!BackfillRunning)
                         {
-                            StartCoroutine(OnEnableBackfillRoutine());
+                            BackfillRunning = true;
                             MatchmakingServer.AddBackfills();
                         }
                     }
@@ -250,8 +264,6 @@ public class BackfillServerHandlerExample : MonoBehaviour
 
     private IEnumerator OnEnableBackfillRoutine()
     {
-        BackfillRunning = true;
-
         if (AdmissionGracePeriodSeconds <= 0)
         {
             yield break;
