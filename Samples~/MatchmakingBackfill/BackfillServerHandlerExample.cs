@@ -46,19 +46,25 @@ public class BackfillServerHandlerExample : MonoBehaviour
     private BackfillAttributes BackfillAttributes;
     private SafeHttpRequest Request;
 
-    private bool BackfillRunning
+    struct BackfillRunningStruct
     {
-        get { return BackfillRunning; }
-        set
+        private bool _value;
+        public bool Value
         {
-            BackfillRunning = value;
-
-            if (value)
+            get { return _value; }
+            set
             {
-                StartCoroutine(OnEnableBackfillRoutine());
+                _value = value;
+
+                if (value)
+                {
+                    Instance.StartCoroutine(Instance.OnEnableBackfillRoutine());
+                }
             }
         }
     }
+
+    private BackfillRunningStruct BackfillRunning;
 
     public void Awake()
     {
@@ -74,7 +80,7 @@ public class BackfillServerHandlerExample : MonoBehaviour
 
     void Start()
     {
-        BackfillRunning = false;
+        BackfillRunning.Value = false;
         IDictionary envs = Environment.GetEnvironmentVariables();
 
         #region mock data
@@ -162,9 +168,9 @@ public class BackfillServerHandlerExample : MonoBehaviour
                 {
                     if (message == "healthy")
                     {
-                        if (!BackfillRunning)
+                        if (!BackfillRunning.Value)
                         {
-                            BackfillRunning = true;
+                            BackfillRunning.Value = true;
                             MatchmakingServer.AddBackfills();
                         }
                     }
@@ -211,7 +217,7 @@ public class BackfillServerHandlerExample : MonoBehaviour
 
     void Update()
     {
-        if (BackfillRunning && MatchmakingServer.Assignments.Count == 0)
+        if (BackfillRunning.Value && MatchmakingServer.Assignments.Count == 0)
         {
             StopBackfill(StopServer);
         }
@@ -226,7 +232,7 @@ public class BackfillServerHandlerExample : MonoBehaviour
 
     public void StopBackfill(Action onCompletedDelegate = null)
     {
-        BackfillRunning = false;
+        BackfillRunning.Value = false;
         MatchmakingServer.RemoveAllBackfills(onCompletedDelegate);
     }
 
