@@ -270,22 +270,17 @@ namespace Edgegap.Matchmaking
                                 () =>
                                 {
                                     Backfills._Update(temp, $"abandoned [{b.Key}]");
-                                },
-                                () =>
-                                {
-                                    if (
-                                        onCompletedDelegate is not null
-                                        && Backfills.Current.Count == 0
-                                    )
-                                    {
-                                        onCompletedDelegate();
-                                    }
                                 }
                             );
                         },
                         0f
                     )
                 );
+            }
+
+            if (onCompletedDelegate is not null)
+            {
+                onCompletedDelegate();
             }
         }
         #endregion
