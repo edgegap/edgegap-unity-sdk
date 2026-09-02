@@ -215,14 +215,6 @@ public class BackfillServerHandlerExample : MonoBehaviour
         }
     }
 
-    void Update()
-    {
-        if (BackfillRunning.Value && MatchmakingServer.Assignments.Count == 0)
-        {
-            StopBackfill(StopServer);
-        }
-    }
-
     public void OnApplicationQuit()
     {
         if (!enabled)
@@ -276,7 +268,6 @@ public class BackfillServerHandlerExample : MonoBehaviour
         }
 
         yield return new WaitForSecondsRealtime(AdmissionGracePeriodSeconds);
-        enabled = false;
 
         StopBackfill(() =>
         {
