@@ -20,6 +20,7 @@ namespace Edgegap.Matchmaking
         internal string PATH_TICKETS = "tickets";
         internal string PATH_GROUP_TICKETS = "group-tickets";
         internal string PATH_GROUP_UP = "groups";
+        internal string PATH_BACKFILL = "backfills";
 
         public Api(MonoBehaviour parent, string authToken, string baseUrl)
         {
@@ -27,6 +28,8 @@ namespace Edgegap.Matchmaking
             AuthToken = authToken;
             BaseUrl = baseUrl;
         }
+
+        #region Utility
 
         public void GetMonitor(
             Action<MonitorResponseDTO, UnityWebRequest> onSuccessDelegate,
@@ -83,7 +86,9 @@ namespace Edgegap.Matchmaking
                 onErrorDelegate
             );
         }
+        #endregion
 
+        #region Server-to-Server Tickets
         public void CreateTicketAsync<T, A>(
             T ticket,
             Action<TicketResponseDTO, UnityWebRequest> onSuccessDelegate,
@@ -191,7 +196,9 @@ namespace Edgegap.Matchmaking
                 onErrorDelegate
             );
         }
+        #endregion
 
+        #region Client Group-Up
         public void CreateGroup<G, A>(
             G group,
             Action<GroupUpResponseDTO, UnityWebRequest> onSuccessDelegate,
@@ -382,5 +389,86 @@ namespace Edgegap.Matchmaking
                 onErrorDelegate
             );
         }
+        #endregion
+
+        #region Server Backfill
+        public void CreateBackfill<A>(
+            BackfillRequestDTO<A> backfill,
+            Action<BackfillResponseDTO<A>, UnityWebRequest> onSuccessDelegate,
+            Action<string, UnityWebRequest> onErrorDelegate
+        )
+        {
+            Request.Post(
+                $"{BaseUrl}/{PATH_BACKFILL}",
+                AuthToken,
+                JsonConvert.SerializeObject(backfill),
+                (string response, UnityWebRequest request) =>
+                {
+                    try
+                    {
+                        BackfillResponseDTO<A> backfillRes = JsonConvert.DeserializeObject<
+                            BackfillResponseDTO<A>
+                        >(response);
+                        onSuccessDelegate(backfillRes, request);
+                    }
+                    catch (Exception e)
+                    {
+                        L.Error(
+                            $"Couldn't parse backfill, consider updating Matchmaking SDK. {e.Message}"
+                        );
+                        throw;
+                    }
+                },
+                onErrorDelegate
+            );
+        }
+
+        public void GetBackfill<A>(
+            string backfillID,
+            Action<BackfillResponseDTO<A>, UnityWebRequest> onSuccessDelegate,
+            Action<string, UnityWebRequest> onErrorDelegate
+        )
+        {
+            Request.Get(
+                $"{BaseUrl}/{PATH_BACKFILL}/{backfillID}",
+                AuthToken,
+                (string response, UnityWebRequest request) =>
+                {
+                    try
+                    {
+                        BackfillResponseDTO<A> backfillRes = JsonConvert.DeserializeObject<
+                            BackfillResponseDTO<A>
+                        >(response);
+                        onSuccessDelegate(backfillRes, request);
+                    }
+                    catch (Exception e)
+                    {
+                        L.Error(
+                            $"Couldn't parse backfill, consider updating Matchmaking SDK. {e.Message}"
+                        );
+                        throw;
+                    }
+                },
+                onErrorDelegate
+            );
+        }
+
+        public void DeleteBackfill(
+            string backfillID,
+            Action<UnityWebRequest> onSuccessDelegate,
+            Action<string, UnityWebRequest> onErrorDelegate
+        )
+        {
+            Request.Delete(
+                $"{BaseUrl}/{PATH_BACKFILL}/{backfillID}",
+                AuthToken,
+                (string response, UnityWebRequest request) =>
+                {
+                    onSuccessDelegate(request);
+                },
+                onErrorDelegate
+            );
+        }
+        #endregion
     }
 }
