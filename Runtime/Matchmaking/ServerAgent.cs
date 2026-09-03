@@ -342,7 +342,8 @@ namespace Edgegap.Matchmaking
             }
             else
             {
-                Backfills._Notify($"expiration failed [{backfillID}]", ObservableActionType.Warn);
+                Backfills._Notify($"expiration failed (not found) [{backfillID}]", ObservableActionType.Warn);
+``
             }
 
             if (onCompletedDelegate is not null)
