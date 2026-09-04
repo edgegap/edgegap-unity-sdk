@@ -189,25 +189,25 @@ public class BackfillServerHandlerExample : MonoBehaviour
                     string message
                 ) =>
                 {
+                    if (action == ObservableActionType.Update && message.Contains("created"))
+                    {
+                        // todo handling new backfill
+                    }
+
                     if (action == ObservableActionType.Update && message.Contains("assigned"))
                     {
-                        // todo handling
+                        // todo handling assigned ticket to backfill
                     }
 
                     if (message.Contains("abandon"))
                     {
-                        // todo handling
-                    }
-
-                    if (action == ObservableActionType.Update && message.Contains("create"))
-                    {
-                        // todo handling
+                        // todo handling abandoned backfill
                     }
                 }
             );
 
-            // todo listen for joining players & their ticketID => OnPlayerConnecting
-            // todo listen for leaving players => OnPlayerLeaving
+            // todo listen for joining players & their ticketID => OnPlayerJoined
+            // todo listen for leaving players => OnPlayerAbandoned
 
             L.Log(
                 $"MM ServerHandler | Started successfully for deployment '{DeploymentEnvs.RequestID}'."
@@ -225,7 +225,7 @@ public class BackfillServerHandlerExample : MonoBehaviour
     public void StopBackfill(Action onCompletedDelegate = null)
     {
         BackfillRunning.Value = false;
-        MatchmakingServer.RemoveAllBackfills(onCompletedDelegate);
+        MatchmakingServer.AbandonAllBackfills(onCompletedDelegate);
     }
 
     public void StopServer()
@@ -245,19 +245,24 @@ public class BackfillServerHandlerExample : MonoBehaviour
         );
     }
 
-    public void OnPlayerConnecting(string ticketID)
+    public void OnPlayerJoined(string ticketID)
     {
         BackfillAssignedTicket<MyTicketsAttributes> ticket = MatchmakingServer.PlayerConnected(
             ticketID
         );
 
-        // todo if ticket is null, kick/ban/reject connection through netcode-specific methods
-        // otherwise map the connection with the ticketID
+        if (ticket is null)
+        {
+            // todo can't be mapped to backfill => kick/ban/reject connection through netcode-specific methods
+        }
+        {
+            // todo process the connection according to returned ticket information
+        }
     }
 
-    public void OnPlayerLeaving()
+    public void OnPlayerAbandoned(string ticketID)
     {
-        // todo get ticketID from connection - ticketID mapping => MatchmakingServer.AbandonPlayer(ticketID);
+        MatchmakingServer.AbandonPlayer(ticketID);
     }
 
     private IEnumerator OnEnableBackfillRoutine()
@@ -269,10 +274,8 @@ public class BackfillServerHandlerExample : MonoBehaviour
 
         yield return new WaitForSecondsRealtime(AdmissionGracePeriodSeconds);
 
-        StopBackfill(() =>
-        {
-            // todo extend with custom code to decide if new connections are still accepted
-        }
-        );
+        StopBackfill(() => {
+            // todo optionally AbandonPlayer all assignments to immediately end connection grace period
+        });
     }
 }
