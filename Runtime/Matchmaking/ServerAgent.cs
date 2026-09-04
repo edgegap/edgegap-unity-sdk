@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
@@ -171,7 +172,7 @@ namespace Edgegap.Matchmaking
             if (!Backfills.Current.ContainsKey(backfillID))
             {
                 Backfills._Notify(
-                    $"delete failed (not found) [{backfillID}]",
+                    $"abandon failed (not found) [{backfillID}]",
                     ObservableActionType.Warn
                 );
                 return;
@@ -229,11 +230,12 @@ namespace Edgegap.Matchmaking
                                         }
                                         else
                                         {
-                                            Backfills._Error(
+                                            Backfills._Notify(
                                                 $"abandon failed [{backfillID}]\n{error}",
-                                                temp
+                                                ObservableActionType.Warn
                                             );
                                         }
+                                        Backfills._Update(temp, $"deleted reference [{backfillID}]");
                                     },
                                     onCompletedDelegate
                                 );
@@ -248,39 +250,27 @@ namespace Edgegap.Matchmaking
         public void RemoveAllBackfills(Action onCompletedDelegate = null)
         {
             Polling = false;
-            Dictionary<string, BackfillResponseDTO<A>> temp = new Dictionary<
-                string,
-                BackfillResponseDTO<A>
-            >(Backfills.Current);
 
-            foreach (KeyValuePair<string, BackfillResponseDTO<A>> b in temp)
+            ConcurrentQueue<string> requestsFinished = new ConcurrentQueue<string>();
+            int requestsPending = Backfills.Current.Count;
+            
+            foreach (KeyValuePair<string, BackfillResponseDTO<A>> b in Backfills.Current)
             {
                 Handler.StartCoroutine(
                     DelayMethod(
                         () =>
                         {
-                            Dictionary<string, BackfillResponseDTO<A>> temp = new Dictionary<
-                                string,
-                                BackfillResponseDTO<A>
-                            >(Backfills.Current);
-
-                            OnBackfillExpired(
-                                b.Key,
-                                temp.Remove(b.Key),
-                                () =>
-                                {
-                                    Backfills._Update(temp, $"abandoned [{b.Key}]");
-                                }
-                            );
+                            RemoveBackfill(b.Key, () => { requestsFinished.Enqueue(b.Key); });
                         },
                         0f
                     )
                 );
             }
 
-            if (onCompletedDelegate is not null)
-            {
-                onCompletedDelegate();
+            if (onCompletedDelegate is not null) {
+                Handler.StartCoroutine(
+                    WaitForRequests(requestsFinished, requestsPending, onCompletedDelegate)
+                );
             }
         }
         #endregion
@@ -403,7 +393,7 @@ namespace Edgegap.Matchmaking
                 },
                 (string error, UnityWebRequest request) =>
                 {
-                    Backfills._Error($"backfill create failed\n{error}");
+                    Backfills._Error($"create failed\n{error}");
                 }
             );
         }
@@ -537,6 +527,16 @@ namespace Edgegap.Matchmaking
 
             yield return new WaitForSeconds((float)delaySeconds);
             onDelayFinished();
+        }
+
+        internal IEnumerator WaitForRequests(
+            ConcurrentQueue<string> requests,
+            int expectedCount,
+            Action onComplete
+        )
+        {
+            yield return new WaitUntil(() => updates.Count == expectedCount);
+            onComplete.Invoke();
         }
         #endregion
     }
