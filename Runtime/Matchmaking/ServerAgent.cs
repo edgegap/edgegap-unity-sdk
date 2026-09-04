@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
@@ -166,12 +167,12 @@ namespace Edgegap.Matchmaking
             }
         }
 
-        public void RemoveBackfill(string backfillID, Action onCompletedDelegate = null)
+        public void AbandonBackfill(string backfillID, Action onCompletedDelegate = null)
         {
             if (!Backfills.Current.ContainsKey(backfillID))
             {
                 Backfills._Notify(
-                    $"delete failed (not found) [{backfillID}]",
+                    $"abandon failed (not found) [{backfillID}]",
                     ObservableActionType.Warn
                 );
                 return;
@@ -181,106 +182,55 @@ namespace Edgegap.Matchmaking
                 backfillID,
                 (UnityWebRequest request) =>
                 {
-                    Handler.StartCoroutine(
-                        DelayMethod(
-                            () =>
-                            {
-                                Dictionary<string, BackfillResponseDTO<A>> temp = new Dictionary<
-                                    string,
-                                    BackfillResponseDTO<A>
-                                >(Backfills.Current);
+                    Backfills._Notify($"abandoned [{backfillID}]");
 
-                                OnBackfillExpired(
-                                    backfillID,
-                                    temp.Remove(backfillID),
-                                    () =>
-                                    {
-                                        Backfills._Update(temp, $"abandoned [{backfillID}]");
-                                    },
-                                    onCompletedDelegate
-                                );
-                            },
-                            0f
-                        )
-                    );
+                    RemoveBackfill(Backfills.Current, backfillID, onCompletedDelegate);
                 },
                 (string error, UnityWebRequest request) =>
                 {
-                    Handler.StartCoroutine(
-                        DelayMethod(
-                            () =>
-                            {
-                                Dictionary<string, BackfillResponseDTO<A>> temp = new Dictionary<
-                                    string,
-                                    BackfillResponseDTO<A>
-                                >(Backfills.Current);
+                    if (request.responseCode == 404)
+                    {
+                        Backfills._Notify(
+                            $"abandon failed (not found) [{backfillID}]",
+                            ObservableActionType.Warn
+                        );
+                    }
+                    else
+                    {
+                        Backfills._Notify(
+                            $"abandon failed [{backfillID}]\n{error}",
+                            ObservableActionType.Warn
+                        );
+                    }
 
-                                OnBackfillExpired(
-                                    backfillID,
-                                    temp.Remove(backfillID),
-                                    () =>
-                                    {
-                                        if (request.responseCode == 404)
-                                        {
-                                            Backfills._Notify(
-                                                $"abandon failed (not found) [{backfillID}]",
-                                                ObservableActionType.Warn
-                                            );
-                                        }
-                                        else
-                                        {
-                                            Backfills._Error(
-                                                $"abandon failed [{backfillID}]\n{error}",
-                                                temp
-                                            );
-                                        }
-                                    },
-                                    onCompletedDelegate
-                                );
-                            },
-                            0f
-                        )
-                    );
+                    RemoveBackfill(Backfills.Current, backfillID, onCompletedDelegate);
                 }
             );
         }
 
-        public void RemoveAllBackfills(Action onCompletedDelegate = null)
+        public void AbandonAllBackfills(Action onCompletedDelegate = null)
         {
             Polling = false;
-            Dictionary<string, BackfillResponseDTO<A>> temp = new Dictionary<
-                string,
-                BackfillResponseDTO<A>
-            >(Backfills.Current);
 
-            foreach (KeyValuePair<string, BackfillResponseDTO<A>> b in temp)
+            ConcurrentQueue<string> requestsFinished = new ConcurrentQueue<string>();
+            int requestsPending = Backfills.Current.Count;
+
+            foreach (KeyValuePair<string, BackfillResponseDTO<A>> b in Backfills.Current)
             {
-                Handler.StartCoroutine(
-                    DelayMethod(
-                        () =>
-                        {
-                            Dictionary<string, BackfillResponseDTO<A>> temp = new Dictionary<
-                                string,
-                                BackfillResponseDTO<A>
-                            >(Backfills.Current);
-
-                            OnBackfillExpired(
-                                b.Key,
-                                temp.Remove(b.Key),
-                                () =>
-                                {
-                                    Backfills._Update(temp, $"abandoned [{b.Key}]");
-                                }
-                            );
-                        },
-                        0f
-                    )
+                AbandonBackfill(
+                    b.Key,
+                    () =>
+                    {
+                        requestsFinished.Enqueue(b.Key);
+                    }
                 );
             }
 
             if (onCompletedDelegate is not null)
             {
-                onCompletedDelegate();
+                Handler.StartCoroutine(
+                    WaitForRequests(requestsFinished, requestsPending, onCompletedDelegate)
+                );
             }
         }
         #endregion
@@ -318,9 +268,19 @@ namespace Edgegap.Matchmaking
             L.SubscribeLogger(Backfills, "MM", "Backfill", LogBackfillUpdates);
             Backfills.Subscribe(onBackfillUpdate);
 
-            foreach (InjectedTicketDTO<A> t in tickets.Values)
+            foreach (InjectedTicketDTO<A> ticket in tickets.Values)
             {
-                AddAssignment(t);
+                Assignments[ticket.ID] = new BackfillAssignedTicket<A>()
+                {
+                    ID = ticket.ID,
+                    CreatedAt = ticket.CreatedAt,
+                    PlayerIP = ticket.PlayerIP,
+                    GroupID = ticket.GroupID,
+                    Attributes = ticket.Attributes,
+                    AssignedAt = DateTime.Now,
+                };
+
+                Handler.StartCoroutine(DelayMethod(() => CheckTicketConnection(ticket.ID)));
             }
 
             Status();
@@ -329,42 +289,35 @@ namespace Edgegap.Matchmaking
 
         #region Internals
 
-        internal void OnBackfillExpired(
+        internal void RemoveBackfill(
+            Dictionary<string, BackfillResponseDTO<A>> backfills,
             string backfillID,
-            bool backfillExpired,
-            Action onExpiredSuccess,
             Action onCompletedDelegate = null
         )
         {
-            if (backfillExpired)
+            Dictionary<string, BackfillResponseDTO<A>> newBackfills = new Dictionary<
+                string,
+                BackfillResponseDTO<A>
+            >(backfills);
+
+            if (backfills[backfillID].Status == "ASSIGNED") { }
+
+            if (newBackfills.Remove(backfillID))
             {
-                onExpiredSuccess();
+                Backfills._Update(newBackfills, $"removed [{backfillID}]");
             }
             else
             {
-                Backfills._Notify($"expiration failed (not found) [{backfillID}]", ObservableActionType.Warn);
+                Backfills._Notify(
+                    $"remove failed (not found) [{backfillID}]",
+                    ObservableActionType.Warn
+                );
             }
 
             if (onCompletedDelegate is not null)
             {
                 onCompletedDelegate();
             }
-        }
-
-        internal void AddAssignment(InjectedTicketDTO<A> ticket)
-        {
-            BackfillAssignedTicket<A> assignment = new BackfillAssignedTicket<A>()
-            {
-                ID = ticket.ID,
-                CreatedAt = ticket.CreatedAt,
-                PlayerIP = ticket.PlayerIP,
-                GroupID = ticket.GroupID,
-                Attributes = ticket.Attributes,
-                AssignedAt = DateTime.Now,
-            };
-
-            Assignments[assignment.ID] = assignment;
-            Handler.StartCoroutine(DelayMethod(() => CheckTicketConnection(assignment.ID)));
         }
 
         internal void StartNewBackfill()
@@ -387,15 +340,15 @@ namespace Edgegap.Matchmaking
                 {
                     backfillRes.CreatedAt = DateTime.Now;
 
-                    Dictionary<string, BackfillResponseDTO<A>> temp = new Dictionary<
+                    Dictionary<string, BackfillResponseDTO<A>> newBackfills = new Dictionary<
                         string,
                         BackfillResponseDTO<A>
                     >(Backfills.Current);
 
-                    temp[backfillRes.ID] = backfillRes;
-                    Backfills._Update(temp, $"created [{backfillRes.ID}]");
+                    newBackfills[backfillRes.ID] = backfillRes;
+                    Backfills._Update(newBackfills, $"created [{backfillRes.ID}]");
 
-                    if (!Polling && Backfills.Current.Count == 1)
+                    if (!Polling && Backfills.Current.Count > 0)
                     {
                         Polling = true;
                         Handler.StartCoroutine(DelayMethod(() => StartPollingBackfills()));
@@ -403,7 +356,7 @@ namespace Edgegap.Matchmaking
                 },
                 (string error, UnityWebRequest request) =>
                 {
-                    Backfills._Error($"backfill create failed\n{error}");
+                    Backfills._Error($"create failed\n{error}");
                 }
             );
         }
@@ -436,28 +389,24 @@ namespace Edgegap.Matchmaking
 
                         if (backfill.Status == "ASSIGNED")
                         {
-                            AddAssignment(backfill.AssignedTicket);
+                            InjectedTicketDTO<A> ticket = backfill.AssignedTicket;
+
+                            Assignments[ticket.ID] = new BackfillAssignedTicket<A>()
+                            {
+                                ID = ticket.ID,
+                                CreatedAt = ticket.CreatedAt,
+                                PlayerIP = ticket.PlayerIP,
+                                GroupID = ticket.GroupID,
+                                Attributes = ticket.Attributes,
+                                AssignedAt = DateTime.Now,
+                            };
+
+                            Dictionary<string, BackfillResponseDTO<A>> newBackfills =
+                                new Dictionary<string, BackfillResponseDTO<A>>(Backfills.Current);
+                            Backfills._Update(newBackfills, $"assigned [{backfill.ID}]");
 
                             Handler.StartCoroutine(
-                                DelayMethod(
-                                    () =>
-                                    {
-                                        Dictionary<string, BackfillResponseDTO<A>> temp =
-                                            new Dictionary<string, BackfillResponseDTO<A>>(
-                                                Backfills.Current
-                                            );
-
-                                        OnBackfillExpired(
-                                            b.ID,
-                                            temp.Remove(b.ID),
-                                            () =>
-                                            {
-                                                Backfills._Update(temp, $"assigned [{b.ID}]");
-                                            }
-                                        );
-                                    },
-                                    0f
-                                )
+                                DelayMethod(() => CheckTicketConnection(ticket.ID))
                             );
                         }
                     },
@@ -470,7 +419,7 @@ namespace Edgegap.Matchmaking
                             Backfills._Error(
                                 $"polling failed (reached maximum retries) [{b.ID}]\n{error}"
                             );
-                            RemoveBackfill(b.ID, StartNewBackfill);
+                            AbandonBackfill(b.ID, StartNewBackfill);
                         }
                         else if (request.responseCode == 404)
                         {
@@ -479,33 +428,12 @@ namespace Edgegap.Matchmaking
                                 ObservableActionType.Warn
                             );
 
-                            Handler.StartCoroutine(
-                                DelayMethod(
-                                    () =>
-                                    {
-                                        Dictionary<string, BackfillResponseDTO<A>> temp =
-                                            new Dictionary<string, BackfillResponseDTO<A>>(
-                                                Backfills.Current
-                                            );
-
-                                        OnBackfillExpired(
-                                            b.ID,
-                                            temp.Remove(b.ID),
-                                            () =>
-                                            {
-                                                Backfills._Update(temp, $"abandoned [{b.ID}]");
-                                            },
-                                            StartNewBackfill
-                                        );
-                                    },
-                                    0f
-                                )
-                            );
+                            RemoveBackfill(Backfills.Current, b.ID, StartNewBackfill);
                         }
                         else if (request.responseCode != 429 && request.responseCode < 500)
                         {
                             Backfills._Error($"polling failed [{b.ID}]\n{error}");
-                            RemoveBackfill(b.ID, StartNewBackfill);
+                            AbandonBackfill(b.ID, StartNewBackfill);
                         }
                     }
                 );
@@ -537,6 +465,16 @@ namespace Edgegap.Matchmaking
 
             yield return new WaitForSeconds((float)delaySeconds);
             onDelayFinished();
+        }
+
+        internal IEnumerator WaitForRequests(
+            ConcurrentQueue<string> requests,
+            int expectedCount,
+            Action onComplete
+        )
+        {
+            yield return new WaitUntil(() => requests.Count == expectedCount);
+            onComplete.Invoke();
         }
         #endregion
     }
