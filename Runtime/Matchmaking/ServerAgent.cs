@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.Networking;
@@ -300,11 +301,12 @@ namespace Edgegap.Matchmaking
                 BackfillResponseDTO<A>
             >(backfills);
 
-            if (backfills[backfillID].Status == "ASSIGNED") { }
-
             if (newBackfills.Remove(backfillID))
             {
-                Backfills._Update(newBackfills, $"removed [{backfillID}]");
+                Backfills._Update(
+                    newBackfills,
+                    $"{(backfills[backfillID].Status == "ASSIGNED" ? "assigned" : "removed")} [{backfillID}]"
+                );
             }
             else
             {
@@ -365,27 +367,35 @@ namespace Edgegap.Matchmaking
         {
             if (!Polling)
             {
-                if (LogPollingUpdates)
-                {
-                    Backfills._Notify($"polling stopped");
-                }
+                Backfills._Notify($"polling stopped");
                 return;
             }
 
+            if (consecutiveErrors > MaxConsecutivePollingErrors)
+            {
+                Polling = false;
+                Backfills._Error($"polling failed (reached maximum retries)");
+                AbandonAllBackfills();
+                return;
+            }
+
+            if (LogPollingUpdates)
+            {
+                Backfills._Notify(
+                    $"polling [{consecutiveErrors + 1}/{MaxConsecutivePollingErrors}]"
+                );
+            }
+
+            ConcurrentQueue<bool> requestsFinished = new ConcurrentQueue<bool>();
+            int requestsPending = Backfills.Current.Count;
+
             foreach (BackfillResponseDTO<A> b in Backfills.Current.Values)
             {
-                if (LogPollingUpdates)
-                {
-                    Backfills._Notify(
-                        $"polling [{consecutiveErrors + 1}/{MaxConsecutivePollingErrors}]"
-                    );
-                }
-
                 MatchmakingApi.GetBackfill<A>(
                     b.ID,
                     (BackfillResponseDTO<A> backfill, UnityWebRequest request) =>
                     {
-                        consecutiveErrors = 0;
+                        requestsFinished.Enqueue(true);
 
                         if (backfill.Status == "ASSIGNED")
                         {
@@ -401,9 +411,7 @@ namespace Edgegap.Matchmaking
                                 AssignedAt = DateTime.Now,
                             };
 
-                            Dictionary<string, BackfillResponseDTO<A>> newBackfills =
-                                new Dictionary<string, BackfillResponseDTO<A>>(Backfills.Current);
-                            Backfills._Update(newBackfills, $"assigned [{backfill.ID}]");
+                            RemoveBackfill(Backfills.Current, backfill.ID);
 
                             Handler.StartCoroutine(
                                 DelayMethod(() => CheckTicketConnection(ticket.ID))
@@ -412,16 +420,9 @@ namespace Edgegap.Matchmaking
                     },
                     (string error, UnityWebRequest request) =>
                     {
-                        consecutiveErrors += 1;
+                        requestsFinished.Enqueue(false);
 
-                        if (consecutiveErrors > MaxConsecutivePollingErrors)
-                        {
-                            Backfills._Error(
-                                $"polling failed (reached maximum retries) [{b.ID}]\n{error}"
-                            );
-                            AbandonBackfill(b.ID, StartNewBackfill);
-                        }
-                        else if (request.responseCode == 404)
+                        if (request.responseCode == 404)
                         {
                             Backfills._Notify(
                                 $"polling failed (not found) [{b.ID}]",
@@ -439,7 +440,27 @@ namespace Edgegap.Matchmaking
                 );
             }
 
-            Handler.StartCoroutine(DelayMethod(() => StartPollingBackfills(consecutiveErrors)));
+            Handler.StartCoroutine(
+                WaitForRequests(
+                    requestsFinished,
+                    requestsPending,
+                    () =>
+                    {
+                        if (requestsFinished.Contains(false))
+                        {
+                            consecutiveErrors += 1;
+                        }
+                        else
+                        {
+                            consecutiveErrors = 0;
+                        }
+
+                        Handler.StartCoroutine(
+                            DelayMethod(() => StartPollingBackfills(consecutiveErrors))
+                        );
+                    }
+                )
+            );
         }
 
         internal void CheckTicketConnection(string ticketID)
@@ -467,8 +488,8 @@ namespace Edgegap.Matchmaking
             onDelayFinished();
         }
 
-        internal IEnumerator WaitForRequests(
-            ConcurrentQueue<string> requests,
+        internal IEnumerator WaitForRequests<T>(
+            ConcurrentQueue<T> requests,
             int expectedCount,
             Action onComplete
         )
