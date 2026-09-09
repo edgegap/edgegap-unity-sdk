@@ -86,11 +86,13 @@ namespace Edgegap.Matchmaking
             LogPollingUpdates = logPollingUpdates;
         }
 
-        public bool AbandonPlayer(string ticketID)
+        public bool AbandonPlayer(string ticketID, bool expiredGrace = false)
         {
             if (Assignments.Remove(ticketID))
             {
-                L.Log($"MM | Backfill - ticket removed [{ticketID}]");
+                L.Log(
+                    $"MM | Backfill - ticket abandoned {(expiredGrace ? "(connection grace period expired)" : "\b")} [{ticketID}]"
+                );
                 AddBackfills();
                 return true;
             }
@@ -465,14 +467,13 @@ namespace Edgegap.Matchmaking
 
         internal void CheckTicketConnection(string ticketID)
         {
-            double? timeSinceAssigned = (
+            double timeSinceAssigned = (
                 DateTime.Now - Assignments[ticketID].AssignedAt
-            )?.TotalSeconds;
+            ).TotalSeconds;
 
             if (timeSinceAssigned >= ConnectionGracePeriodSeconds)
             {
-                L.Log($"MM | Backfill - connection grace period expired [{ticketID}]");
-                AbandonPlayer(ticketID);
+                AbandonPlayer(ticketID, true);
             }
             else if (Assignments[ticketID].ConnectedAt is null)
             {
