@@ -465,7 +465,7 @@ namespace Edgegap.Matchmaking
         {
             yield return new WaitForSecondsRealtime(ConnectionGracePeriodSeconds);
 
-            if (Assignments[ticketID].ConnectedAt is null)
+            if (Assignments.ContainsKey(ticketID) && Assignments[ticketID].ConnectedAt is null)
             {
                 AbandonPlayer(ticketID, true);
             }
