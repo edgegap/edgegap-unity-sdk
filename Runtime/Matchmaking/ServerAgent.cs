@@ -280,10 +280,9 @@ namespace Edgegap.Matchmaking
                     PlayerIP = ticket.PlayerIP,
                     GroupID = ticket.GroupID,
                     Attributes = ticket.Attributes,
-                    AssignedAt = DateTime.Now,
                 };
 
-                Handler.StartCoroutine(DelayMethod(() => CheckTicketConnection(ticket.ID)));
+                Handler.StartCoroutine(CheckTicketConnection(ticket.ID));
             }
 
             Status();
@@ -410,14 +409,11 @@ namespace Edgegap.Matchmaking
                                 PlayerIP = ticket.PlayerIP,
                                 GroupID = ticket.GroupID,
                                 Attributes = ticket.Attributes,
-                                AssignedAt = DateTime.Now,
                             };
 
                             RemoveBackfill(Backfills.Current, backfill.ID);
 
-                            Handler.StartCoroutine(
-                                DelayMethod(() => CheckTicketConnection(ticket.ID))
-                            );
+                            Handler.StartCoroutine(CheckTicketConnection(ticket.ID));
                         }
                     },
                     (string error, UnityWebRequest request) =>
@@ -465,19 +461,13 @@ namespace Edgegap.Matchmaking
             );
         }
 
-        internal void CheckTicketConnection(string ticketID)
+        internal IEnumerator CheckTicketConnection(string ticketID)
         {
-            double timeSinceAssigned = (
-                DateTime.Now - Assignments[ticketID].AssignedAt
-            ).TotalSeconds;
+            yield return new WaitForSecondsRealtime(ConnectionGracePeriodSeconds);
 
-            if (timeSinceAssigned >= ConnectionGracePeriodSeconds)
+            if (Assignments[ticketID].ConnectedAt is null)
             {
                 AbandonPlayer(ticketID, true);
-            }
-            else if (Assignments[ticketID].ConnectedAt is null)
-            {
-                Handler.StartCoroutine(DelayMethod(() => CheckTicketConnection(ticketID)));
             }
         }
 
