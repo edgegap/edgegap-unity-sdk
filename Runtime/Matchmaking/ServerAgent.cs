@@ -91,7 +91,7 @@ namespace Edgegap.Matchmaking
             if (Assignments.Remove(ticketID))
             {
                 L.Log(
-                    $"MM | Backfill - ticket {(expiredGrace ? "abandoned (connection grace period expired)" : "abandoned")} [{ticketID}]"
+                    $"MM | Backfill - ticket abandoned{(expiredGrace ? " (connection grace period expired)" : "")} [{ticketID}]"
                 );
                 AddBackfills();
                 return true;
