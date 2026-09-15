@@ -304,10 +304,7 @@ namespace Edgegap.Matchmaking
 
             if (newBackfills.Remove(backfillID))
             {
-                Backfills._Update(
-                    newBackfills,
-                    $"{(backfills[backfillID].Status == "ASSIGNED" ? "assigned" : "removed")} [{backfillID}]"
-                );
+                Backfills._Update(newBackfills, $"removed [{backfillID}]");
             }
             else
             {
@@ -410,6 +407,10 @@ namespace Edgegap.Matchmaking
                                 GroupID = ticket.GroupID,
                                 Attributes = ticket.Attributes,
                             };
+
+                            Dictionary<string, BackfillResponseDTO<A>> newBackfills =
+                                new Dictionary<string, BackfillResponseDTO<A>>(Backfills.Current);
+                            Backfills._Update(newBackfills, $"assigned [{backfill.ID}]");
 
                             RemoveBackfill(Backfills.Current, backfill.ID);
 
