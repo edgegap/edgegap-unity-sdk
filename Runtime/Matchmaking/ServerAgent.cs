@@ -408,12 +408,8 @@ namespace Edgegap.Matchmaking
                                 Attributes = ticket.Attributes,
                             };
 
-                            Dictionary<string, BackfillResponseDTO<A>> newBackfills =
-                                new Dictionary<string, BackfillResponseDTO<A>>(Backfills.Current);
-                            Backfills._Update(newBackfills, $"assigned [{backfill.ID}]");
-
+                            Backfills._Update(Backfills.Current, $"assigned [{backfill.ID}]");
                             RemoveBackfill(Backfills.Current, backfill.ID);
-
                             Handler.StartCoroutine(CheckTicketConnection(ticket.ID));
                         }
                     },
