@@ -36,9 +36,6 @@ namespace Edgegap.Matchmaking
     {
 #nullable enable
         [JsonIgnore]
-        public DateTime? AssignedAt;
-
-        [JsonIgnore]
         public DateTime? ConnectedAt;
 #nullable disable
     }

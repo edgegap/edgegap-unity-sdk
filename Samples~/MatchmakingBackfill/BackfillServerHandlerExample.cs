@@ -255,9 +255,6 @@ public class BackfillServerHandlerExample : MonoBehaviour
         {
             // todo can't be mapped to backfill => kick/ban/reject connection through netcode-specific methods
         }
-        {
-            // todo process the connection according to returned ticket information
-        }
     }
 
     public void OnPlayerAbandoned(string ticketID)
