@@ -98,13 +98,17 @@ namespace Edgegap
                 {
                     PortMapping = TryParseEnvVariableJSON<PortMappingEnvironmentVariable>(
                         entry
-                    ).Ports;
+                    )?.Ports;
                 }
             }
 
-            foreach (PortMappingDTO port in PortMapping.Values)
+            // ARBITRIUM_PORTS_MAPPING is missing outside Edgegap (local runs, CI)
+            if (PortMapping is not null)
             {
-                port.Link ??= $"{Fqdn}:{port.External}";
+                foreach (PortMappingDTO port in PortMapping.Values)
+                {
+                    port.Link ??= $"{Fqdn}:{port.External}";
+                }
             }
         }
 
