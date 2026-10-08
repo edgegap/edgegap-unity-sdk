@@ -44,6 +44,11 @@ namespace Edgegap
 
         public IEnumerator _IcmpPing(string ip, Action<int> onCompleteDelegate)
         {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // browsers can't send ICMP, so UnityEngine.Ping doesn't exist in WebGL builds
+            onCompleteDelegate(-1);
+            yield break;
+#else
             UnityEngine.Ping ping = new UnityEngine.Ping(ip);
             double start = Time.realtimeSinceStartupAsDouble;
 
@@ -53,6 +58,7 @@ namespace Edgegap
 
             onCompleteDelegate(ping.time);
             ping.DestroyPing();
+#endif
         }
     }
 }
