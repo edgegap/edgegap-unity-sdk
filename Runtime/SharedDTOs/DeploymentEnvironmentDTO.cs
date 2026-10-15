@@ -98,8 +98,23 @@ namespace Edgegap
                 {
                     PortMapping = TryParseEnvVariableJSON<PortMappingEnvironmentVariable>(
                         entry
-                    ).Ports;
+                    )?.Ports;
                 }
+            }
+
+            if (PortMapping is null)
+            {
+                // ARBITRIUM_PORTS_MAPPING is missing outside Edgegap (local runs, CI)
+                if (string.IsNullOrEmpty(RequestID))
+                {
+                    return;
+                }
+
+                // on Edgegap, players can't connect to a server without port mapping
+                throw new InvalidOperationException(
+                    $"Edgegap Env | ARBITRIUM_PORTS_MAPPING is missing or invalid in deployment "
+                        + $"'{RequestID}', players won't be able to connect."
+                );
             }
 
             foreach (PortMappingDTO port in PortMapping.Values)
