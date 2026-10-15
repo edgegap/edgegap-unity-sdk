@@ -409,6 +409,11 @@ namespace Edgegap.Matchmaking
             int requests
         )
         {
+            beacons = beacons
+                .GroupBy(beacon => beacon.Location.City)
+                .Select(group => group.First())
+                .ToArray();
+
             Dictionary<string, float> results = new Dictionary<string, float>();
             foreach (BeaconDTO beacon in beacons)
             {
@@ -434,6 +439,9 @@ namespace Edgegap.Matchmaking
             if (request.responseCode == 409)
             {
                 Group._Notify("abandon failed (match found)", ObservableActionType.Warn);
+                Polling = true;
+                StartPollingGroup();
+                return;
             }
             else if (request.responseCode == 404)
             {

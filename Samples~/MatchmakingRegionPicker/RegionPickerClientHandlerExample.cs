@@ -1,14 +1,14 @@
-using Edgegap;
-using Edgegap.Matchmaking;
 using System.Collections.Generic;
 using System.Linq;
+using Edgegap;
+using Edgegap.Matchmaking;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
 using L = Edgegap.Logger;
-using MyTicketsAttributes = Edgegap.Matchmaking.LatenciesAttributesDTO;
 using MyGroupUpRequestDTO = Edgegap.Matchmaking.SimpleGroupUpRequestDTO;
+using MyTicketsAttributes = Edgegap.Matchmaking.LatenciesAttributesDTO;
 
 // todo replace LatenciesAttributesDTO with CustomTicketsAttributes
 // todo replace SimpleGroupUpRequestDTO with CustomGroupUpRequestDTO
@@ -39,10 +39,7 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
     public bool LogPollingUpdates = false;
     #endregion
 
-    public GroupClient<
-            MyGroupUpRequestDTO, 
-            MyTicketsAttributes
-        > MatchmakingClient;
+    public GroupClient<MyGroupUpRequestDTO, MyTicketsAttributes> MatchmakingClient;
 
     #region Region Picker UI
     public GameObject ScrollListContainer;
@@ -74,7 +71,9 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
 
                 if (ScrollListContainer == null)
                 {
-                    L.Warn($"MM ClientHandler | Unable to find default component {ScrollListContainerDefaultPath} in scene.");
+                    L.Warn(
+                        $"MM ClientHandler | Unable to find default component {ScrollListContainerDefaultPath} in scene."
+                    );
                 }
             }
 
@@ -85,7 +84,9 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
 
                 if (DisconnectButton == null)
                 {
-                    L.Warn($"MM ClientHandler | Unable to find default component {DisconnectButtonDefaultPath} in scene.");
+                    L.Warn(
+                        $"MM ClientHandler | Unable to find default component {DisconnectButtonDefaultPath} in scene."
+                    );
                 }
                 else
                 {
@@ -101,22 +102,31 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
 
                 if (StatusDisplay == null)
                 {
-                    L.Warn($"MM ClientHandler | Unable to find default component {StatusDisplayDefaultPath} in scene.");
+                    L.Warn(
+                        $"MM ClientHandler | Unable to find default component {StatusDisplayDefaultPath} in scene."
+                    );
                 }
             }
 
             if (HubBtnPrefab == null)
             {
                 L.Log("MM ClientHandler | No Hub Button Prefab provided, using default.");
-                string guid = AssetDatabase.FindAssets($"t:Script {nameof(RegionPickerClientHandlerExample)}")[0];
+                string guid = AssetDatabase.FindAssets(
+                    $"t:Script {nameof(RegionPickerClientHandlerExample)}"
+                )[0];
                 string currentAssetPath = AssetDatabase.GUIDToAssetPath(guid);
-                string hubBtnPrefabDefaultPath = currentAssetPath.Split(nameof(RegionPickerClientHandlerExample))[0] + "BeaconHubButton.prefab";
+                string hubBtnPrefabDefaultPath =
+                    currentAssetPath.Split(nameof(RegionPickerClientHandlerExample))[0]
+                    + "BeaconHubButton.prefab";
 
-                HubBtnPrefab = (GameObject)AssetDatabase.LoadAssetAtPath(hubBtnPrefabDefaultPath, typeof(GameObject));
+                HubBtnPrefab = (GameObject)
+                    AssetDatabase.LoadAssetAtPath(hubBtnPrefabDefaultPath, typeof(GameObject));
 
                 if (HubBtnPrefab == null)
                 {
-                    L.Warn($"MM ClientHandler | Unable to find default prefab {hubBtnPrefabDefaultPath} in assets.");
+                    L.Warn(
+                        $"MM ClientHandler | Unable to find default prefab {hubBtnPrefabDefaultPath} in assets."
+                    );
                 }
             }
         }
@@ -125,10 +135,7 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
     public void Start()
     {
         // configure Matchmaking
-        MatchmakingClient = new GroupClient<
-            MyGroupUpRequestDTO, 
-            MyTicketsAttributes
-        >(
+        MatchmakingClient = new GroupClient<MyGroupUpRequestDTO, MyTicketsAttributes>(
             this,
             BaseUrl,
             AuthToken,
@@ -166,34 +173,53 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
 
                                     if (ScrollListContainer.transform.childCount > 0)
                                     {
-                                        Dictionary<string, float> newPings = new Dictionary<string, float>(pings);
+                                        Dictionary<string, float> newPings = new Dictionary<
+                                            string,
+                                            float
+                                        >(pings);
 
                                         foreach (Transform child in ScrollListContainer.transform)
                                         {
                                             child.gameObject.SetActive(true);
-                                            string label = child.gameObject.GetComponent<BeaconHubButton>().BtnLabel.text;
+                                            string label = child
+                                                .gameObject.GetComponent<BeaconHubButton>()
+                                                .BtnLabel.text;
 
                                             if (pings.ContainsKey(label))
                                             {
-                                                child.gameObject.GetComponent<BeaconHubButton>().SetLatencyIcon(pings[label]);
+                                                child
+                                                    .gameObject.GetComponent<BeaconHubButton>()
+                                                    .SetLatencyIcon(pings[label]);
                                                 newPings.Remove(label);
                                             }
                                             else
                                             {
-                                                child.gameObject.GetComponent<BeaconHubButton>().DisableLatencyBtn();
+                                                child
+                                                    .gameObject.GetComponent<BeaconHubButton>()
+                                                    .DisableLatencyBtn();
                                             }
                                         }
 
                                         foreach (KeyValuePair<string, float> entry in newPings)
                                         {
-                                            GameObject btn = Instantiate(HubBtnPrefab, ScrollListContainer.transform);
-                                            btn.GetComponent<BeaconHubButton>().BtnLabel.text = entry.Key;
-                                            btn.GetComponent<BeaconHubButton>().SetLatencyIcon(entry.Value);
-                                            btn.GetComponent<Button>().onClick.AddListener(() => OnHubBtnClick(entry.Key, entry.Value));
+                                            GameObject btn = Instantiate(
+                                                HubBtnPrefab,
+                                                ScrollListContainer.transform
+                                            );
+                                            btn.GetComponent<BeaconHubButton>().BtnLabel.text =
+                                                entry.Key;
+                                            btn.GetComponent<BeaconHubButton>()
+                                                .SetLatencyIcon(entry.Value);
+                                            btn.GetComponent<Button>()
+                                                .onClick.AddListener(() =>
+                                                    OnHubBtnClick(entry.Key, entry.Value)
+                                                );
                                         }
 
-                                        BeaconHubButton[] btns = ScrollListContainer.GetComponentsInChildren<BeaconHubButton>();
-                                        btns.OrderBy(x => x.GetPing() == -1 ? 1 : 0).ThenBy(x => x.GetPing());
+                                        BeaconHubButton[] btns =
+                                            ScrollListContainer.GetComponentsInChildren<BeaconHubButton>();
+                                        btns.OrderBy(x => x.GetPing() == -1 ? 1 : 0)
+                                            .ThenBy(x => x.GetPing());
 
                                         for (int i = 0; i < btns.Length; ++i)
                                         {
@@ -202,12 +228,24 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
                                     }
                                     else
                                     {
-                                        foreach (KeyValuePair<string, float> entry in pings.OrderBy(key => key.Value))
+                                        foreach (
+                                            KeyValuePair<string, float> entry in pings.OrderBy(
+                                                key => key.Value
+                                            )
+                                        )
                                         {
-                                            GameObject btn = Instantiate(HubBtnPrefab, ScrollListContainer.transform);
-                                            btn.GetComponent<BeaconHubButton>().BtnLabel.text = entry.Key;
-                                            btn.GetComponent<BeaconHubButton>().SetLatencyIcon(entry.Value);
-                                            btn.GetComponent<Button>().onClick.AddListener(() => OnHubBtnClick(entry.Key, entry.Value));
+                                            GameObject btn = Instantiate(
+                                                HubBtnPrefab,
+                                                ScrollListContainer.transform
+                                            );
+                                            btn.GetComponent<BeaconHubButton>().BtnLabel.text =
+                                                entry.Key;
+                                            btn.GetComponent<BeaconHubButton>()
+                                                .SetLatencyIcon(entry.Value);
+                                            btn.GetComponent<Button>()
+                                                .onClick.AddListener(() =>
+                                                    OnHubBtnClick(entry.Key, entry.Value)
+                                                );
                                         }
                                     }
                                 }
@@ -229,11 +267,7 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
                 }
             },
             // handle group assignment
-            (
-                Observable<GroupUpResponseDTO> group,
-                ObservableActionType action,
-                string message
-            ) =>
+            (Observable<GroupUpResponseDTO> group, ObservableActionType action, string message) =>
             {
                 if (
                     action == ObservableActionType.Update
@@ -288,8 +322,8 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
 
                 if (
                     action == ObservableActionType.Update
-                        && message.Contains("removed")
-                        && group.Previous?.Status == "HOST_ASSIGNED"
+                    && message.Contains("removed")
+                    && group.Previous?.Status == "HOST_ASSIGNED"
                 )
                 {
                     DisconnectButton.GetComponent<Button>().interactable = true;
@@ -314,7 +348,7 @@ public class RegionPickerClientHandlerExample : MonoBehaviour
 
     public void StartMatchmaking(Dictionary<string, float> pings, bool isReady)
     {
-        MatchmakingClient.CreateGroup(new MyGroupUpRequestDTO(pings, isReady));
+        MatchmakingClient.CreateGroup(new MyGroupUpRequestDTO(pings, isReady), true);
     }
 
     public void StopMatchmaking()
