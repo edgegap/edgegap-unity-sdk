@@ -240,5 +240,12 @@ namespace Edgegap
         public Func<float> BackoffSeconds = DefaultBackoffSeconds;
 
         public static readonly Func<float> DefaultBackoffSeconds = () => 1f + (0.1f * Random.value);
+
+        public RetryParameters(uint attempts = 3, Func<float> backoffSeconds = null)
+        {
+            MaxAttempts = attempts;
+            RemainingAttempts = attempts;
+            BackoffSeconds = backoffSeconds ?? DefaultBackoffSeconds;
+        }
     }
 }

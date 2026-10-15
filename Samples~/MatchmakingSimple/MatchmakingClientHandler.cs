@@ -1,6 +1,6 @@
+using System.Collections.Generic;
 using Edgegap;
 using Edgegap.Matchmaking;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
 using MyGroupUpRequestDTO = Edgegap.Matchmaking.SimpleGroupUpRequestDTO;
@@ -31,10 +31,7 @@ public class MatchmakingClientHandler : MonoBehaviour
     public bool LogAssignmentUpdates = true;
     public bool LogPollingUpdates = false;
 
-    public GroupClient<
-            MyGroupUpRequestDTO,
-            MyTicketsAttributes
-        > MatchmakingClient;
+    public GroupClient<MyGroupUpRequestDTO, MyTicketsAttributes> MatchmakingClient;
 
     public void Awake()
     {
@@ -53,10 +50,7 @@ public class MatchmakingClientHandler : MonoBehaviour
     public void Start()
     {
         // configure Matchmaking
-        MatchmakingClient = new GroupClient<
-            MyGroupUpRequestDTO,
-            MyTicketsAttributes
-        >(
+        MatchmakingClient = new GroupClient<MyGroupUpRequestDTO, MyTicketsAttributes>(
             this,
             BaseUrl,
             AuthToken,
@@ -112,11 +106,7 @@ public class MatchmakingClientHandler : MonoBehaviour
                 }
             },
             // handle group assignment
-            (
-                Observable<GroupUpResponseDTO> group,
-                ObservableActionType action,
-                string message
-            ) => 
+            (Observable<GroupUpResponseDTO> group, ObservableActionType action, string message) =>
             {
                 if (
                     action == ObservableActionType.Update
@@ -138,9 +128,7 @@ public class MatchmakingClientHandler : MonoBehaviour
                 )
                 {
                     // todo join game on pre-defined game port
-                    Debug.Log(
-                        $"joining game: {group.Current.Assignment.Ports["gameport"].Link}"
-                    );
+                    Debug.Log($"joining game: {group.Current.Assignment.Ports["gameport"].Link}");
                 }
             }
         );
@@ -162,12 +150,12 @@ public class MatchmakingClientHandler : MonoBehaviour
 
     public void StartMatchmaking(Dictionary<string, float> pings, bool isReady)
     {
-        MatchmakingClient.CreateGroup(new MyGroupUpRequestDTO(pings, isReady));
+        MatchmakingClient.CreateGroup(new MyGroupUpRequestDTO(pings, isReady), true);
     }
 
     public void StartMatchmaking(Dictionary<string, float> pings, bool isReady, string groupID)
     {
-        MatchmakingClient.JoinGroup(new MyGroupUpRequestDTO(pings, isReady), groupID);
+        MatchmakingClient.JoinGroup(new MyGroupUpRequestDTO(pings, isReady), groupID, true);
     }
 
     public void StopMatchmaking()
