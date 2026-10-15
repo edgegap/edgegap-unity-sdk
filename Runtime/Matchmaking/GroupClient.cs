@@ -409,6 +409,11 @@ namespace Edgegap.Matchmaking
             int requests
         )
         {
+            beacons = beacons
+                .GroupBy(beacon => beacon.Location.City)
+                .Select(group => group.First())
+                .ToArray();
+
             Dictionary<string, float> results = new Dictionary<string, float>();
             foreach (BeaconDTO beacon in beacons)
             {
