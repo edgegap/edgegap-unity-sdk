@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
 using Random = UnityEngine.Random;
@@ -34,7 +35,13 @@ namespace Edgegap
 #if UNITY_2022_3_OR_NEWER
             UnityWebRequest request = UnityWebRequest.Post(url, body, "application/json");
 #else
-            UnityWebRequest request = UnityWebRequest.Post(url, body);
+            // UnityWebRequest.Post(url, string) form-urlencodes the body before 2022.3,
+            // so send the JSON as raw bytes instead
+            UnityWebRequest request = new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST)
+            {
+                uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(body)),
+                downloadHandler = new DownloadHandlerBuffer(),
+            };
             request.SetRequestHeader("Content-Type", "application/json");
 #endif
             ProcessRetryableRequest(
