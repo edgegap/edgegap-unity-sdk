@@ -1,6 +1,6 @@
+using System.Collections.Generic;
 using Edgegap;
 using Edgegap.Matchmaking;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
@@ -36,10 +36,7 @@ public class GroupUpClientHandlerExample : MonoBehaviour
     public bool LogPollingUpdates = false;
     #endregion
 
-    public GroupClient<
-            MyGroupUpRequestDTO,
-            MyTicketsAttributes
-        > MatchmakingClient;
+    public GroupClient<MyGroupUpRequestDTO, MyTicketsAttributes> MatchmakingClient;
 
     #region Group Up UI
     public Button CreateGroupButton;
@@ -75,26 +72,36 @@ public class GroupUpClientHandlerExample : MonoBehaviour
             if (CreateGroupButton == null)
             {
                 L.Log("MM ClientHandler | No Create Group Button provided, using default.");
-                CreateGroupButton = GameObject.Find(CreateGroupButtonDefaultPath)?.GetComponent<Button>();
+                CreateGroupButton = GameObject
+                    .Find(CreateGroupButtonDefaultPath)
+                    ?.GetComponent<Button>();
 
                 if (CreateGroupButton == null)
                 {
-                    L.Warn($"MM ClientHandler | Unable to find default component {CreateGroupButtonDefaultPath} in scene.");
+                    L.Warn(
+                        $"MM ClientHandler | Unable to find default component {CreateGroupButtonDefaultPath} in scene."
+                    );
                 }
                 else
                 {
-                    CreateGroupButton.GetComponent<Button>().onClick.AddListener(() => StartMatchmaking(Pings, false));
+                    CreateGroupButton
+                        .GetComponent<Button>()
+                        .onClick.AddListener(() => StartMatchmaking(Pings, false));
                 }
             }
 
             if (DeleteGroupButton == null)
             {
                 L.Log("MM ClientHandler | No Delete Group Button provided, using default.");
-                DeleteGroupButton = GameObject.Find(DeleteGroupButtonDefaultPath)?.GetComponent<Button>();
+                DeleteGroupButton = GameObject
+                    .Find(DeleteGroupButtonDefaultPath)
+                    ?.GetComponent<Button>();
 
                 if (DeleteGroupButton == null)
                 {
-                    L.Warn($"MM ClientHandler | Unable to find default component {DeleteGroupButtonDefaultPath} in scene.");
+                    L.Warn(
+                        $"MM ClientHandler | Unable to find default component {DeleteGroupButtonDefaultPath} in scene."
+                    );
                 }
                 else
                 {
@@ -110,7 +117,9 @@ public class GroupUpClientHandlerExample : MonoBehaviour
 
                 if (SetReadyButton == null)
                 {
-                    L.Warn($"MM ClientHandler | Unable to find default component {SetReadyButtonDefaultPath} in scene.");
+                    L.Warn(
+                        $"MM ClientHandler | Unable to find default component {SetReadyButtonDefaultPath} in scene."
+                    );
                 }
                 else
                 {
@@ -126,7 +135,9 @@ public class GroupUpClientHandlerExample : MonoBehaviour
 
                 if (IdInputField == null)
                 {
-                    L.Warn($"MM ClientHandler | Unable to find default component {IdInputFieldDefaultPath} in scene.");
+                    L.Warn(
+                        $"MM ClientHandler | Unable to find default component {IdInputFieldDefaultPath} in scene."
+                    );
                 }
                 else
                 {
@@ -137,26 +148,38 @@ public class GroupUpClientHandlerExample : MonoBehaviour
             if (JoinGroupButton == null)
             {
                 L.Log("MM ClientHandler | No Join Group Button provided, using default.");
-                JoinGroupButton = GameObject.Find(JoinGroupButtonDefaultPath)?.GetComponent<Button>();
+                JoinGroupButton = GameObject
+                    .Find(JoinGroupButtonDefaultPath)
+                    ?.GetComponent<Button>();
 
                 if (JoinGroupButton == null)
                 {
-                    L.Warn($"MM ClientHandler | Unable to find default component {JoinGroupButtonDefaultPath} in scene.");
+                    L.Warn(
+                        $"MM ClientHandler | Unable to find default component {JoinGroupButtonDefaultPath} in scene."
+                    );
                 }
                 else
                 {
-                    JoinGroupButton.GetComponent<Button>().onClick.AddListener(() => StartMatchmaking(Pings, true, IdInputField.text));
+                    JoinGroupButton
+                        .GetComponent<Button>()
+                        .onClick.AddListener(() =>
+                            StartMatchmaking(Pings, true, IdInputField.text)
+                        );
                 }
             }
 
             if (LeaveGroupButton == null)
             {
                 L.Log("MM ClientHandler | No Join Group Button provided, using default.");
-                LeaveGroupButton = GameObject.Find(LeaveGroupButtonDefaultPath)?.GetComponent<Button>();
+                LeaveGroupButton = GameObject
+                    .Find(LeaveGroupButtonDefaultPath)
+                    ?.GetComponent<Button>();
 
                 if (LeaveGroupButton == null)
                 {
-                    L.Warn($"MM ClientHandler | Unable to find default component {LeaveGroupButtonDefaultPath} in scene.");
+                    L.Warn(
+                        $"MM ClientHandler | Unable to find default component {LeaveGroupButtonDefaultPath} in scene."
+                    );
                 }
                 else
                 {
@@ -172,7 +195,9 @@ public class GroupUpClientHandlerExample : MonoBehaviour
 
                 if (StatusDisplay == null)
                 {
-                    L.Warn($"MM ClientHandler | Unable to find default component {StatusDisplayDefaultPath} in scene.");
+                    L.Warn(
+                        $"MM ClientHandler | Unable to find default component {StatusDisplayDefaultPath} in scene."
+                    );
                 }
             }
         }
@@ -181,10 +206,7 @@ public class GroupUpClientHandlerExample : MonoBehaviour
     private void Start()
     {
         // configure Matchmaking
-        MatchmakingClient = new GroupClient<
-            MyGroupUpRequestDTO,
-            MyTicketsAttributes
-        >(
+        MatchmakingClient = new GroupClient<MyGroupUpRequestDTO, MyTicketsAttributes>(
             this,
             BaseUrl,
             AuthToken,
@@ -244,55 +266,37 @@ public class GroupUpClientHandlerExample : MonoBehaviour
                 }
             },
             // handle group assignment
-            (
-                Observable<GroupUpResponseDTO> group,
-                ObservableActionType action,
-                string message
-            ) =>
+            (Observable<GroupUpResponseDTO> group, ObservableActionType action, string message) =>
             {
-                if (
-                    action == ObservableActionType.Error
-                    && group.Current is null
-                )
+                if (action == ObservableActionType.Error && group.Current is null)
                 {
                     ResetButtons();
                 }
 
-                if (
-                    action == ObservableActionType.Warn
-                    && message.Contains("member update failed")
-                )
+                if (action == ObservableActionType.Warn && message.Contains("member update failed"))
                 {
                     SetReadyButton.interactable = false;
                     EnableStopButton();
                 }
 
-                if (
-                    action == ObservableActionType.Update
-                    && message.Contains("updated")
-                )
+                if (action == ObservableActionType.Update && message.Contains("updated"))
                 {
                     // todo update UI
                 }
 
                 if (
                     action == ObservableActionType.Update
-                    && (
-                            message.Contains("abandon")
-                            || message.Contains("removed")
-                        )
+                    && (message.Contains("abandon") || message.Contains("removed"))
                 )
                 {
                     StatusDisplay.text = "Disconnected from group.";
                     MatchmakingClient.Status();
                 }
 
-                if (
-                    action == ObservableActionType.Update
-                    && message.Contains("created")
-                )
+                if (action == ObservableActionType.Update && message.Contains("created"))
                 {
-                    StatusDisplay.text = $"Group created, awaiting members.\nID: {group.Current.GroupID}";
+                    StatusDisplay.text =
+                        $"Group created, awaiting members.\nID: {group.Current.GroupID}";
                     Debug.Log($"Group created.\nID: {group.Current.GroupID}");
 
                     CreateGroupButton.gameObject.SetActive(false);
@@ -304,10 +308,7 @@ public class GroupUpClientHandlerExample : MonoBehaviour
                     DeleteGroupButton.interactable = true;
                 }
 
-                if (
-                    action == ObservableActionType.Update
-                    && message.Contains("joined")
-                )
+                if (action == ObservableActionType.Update && message.Contains("joined"))
                 {
                     StatusDisplay.text = "Group joined, waiting for group owner to set ready.";
 
@@ -318,10 +319,7 @@ public class GroupUpClientHandlerExample : MonoBehaviour
                     LeaveGroupButton.interactable = true;
                 }
 
-                if (
-                    action == ObservableActionType.Update
-                    && message.Contains("member updated")
-                )
+                if (action == ObservableActionType.Update && message.Contains("member updated"))
                 {
                     SetReadyButtonText();
                     SetReadyButton.interactable = true;
@@ -356,9 +354,7 @@ public class GroupUpClientHandlerExample : MonoBehaviour
                 {
                     // todo join game on pre-defined game port
                     StatusDisplay.text = "Host assigned, joining game.";
-                    Debug.Log(
-                        $"joining game: {group.Current.Assignment.Ports["gameport"].Link}"
-                    );
+                    Debug.Log($"joining game: {group.Current.Assignment.Ports["gameport"].Link}");
                 }
             }
         );
@@ -378,17 +374,21 @@ public class GroupUpClientHandlerExample : MonoBehaviour
         StopMatchmaking();
     }
 
-    public void StartMatchmaking(Dictionary<string, float> pings, bool isReady, string groupID = null)
+    public void StartMatchmaking(
+        Dictionary<string, float> pings,
+        bool isReady,
+        string groupID = null
+    )
     {
         DisableButtons();
 
         if (groupID is null)
         {
-            MatchmakingClient.CreateGroup(new MyGroupUpRequestDTO(pings, isReady));
+            MatchmakingClient.CreateGroup(new MyGroupUpRequestDTO(pings, isReady), true);
         }
         else
         {
-            MatchmakingClient.JoinGroup(new MyGroupUpRequestDTO(pings, isReady), groupID);
+            MatchmakingClient.JoinGroup(new MyGroupUpRequestDTO(pings, isReady), groupID, true);
         }
     }
 
@@ -459,7 +459,6 @@ public class GroupUpClientHandlerExample : MonoBehaviour
 
         LeaveGroupButton.interactable = false;
         LeaveGroupButton.gameObject.SetActive(false);
-
 
         CreateGroupButton.gameObject.SetActive(true);
         CreateGroupButton.interactable = true;
