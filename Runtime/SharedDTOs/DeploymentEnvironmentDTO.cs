@@ -102,13 +102,24 @@ namespace Edgegap
                 }
             }
 
-            // ARBITRIUM_PORTS_MAPPING is missing outside Edgegap (local runs, CI)
-            if (PortMapping is not null)
+            if (PortMapping is null)
             {
-                foreach (PortMappingDTO port in PortMapping.Values)
+                // ARBITRIUM_PORTS_MAPPING is missing outside Edgegap (local runs, CI)
+                if (string.IsNullOrEmpty(RequestID))
                 {
-                    port.Link ??= $"{Fqdn}:{port.External}";
+                    return;
                 }
+
+                // on Edgegap, players can't connect to a server without port mapping
+                throw new InvalidOperationException(
+                    $"Edgegap Env | ARBITRIUM_PORTS_MAPPING is missing or invalid in deployment "
+                        + $"'{RequestID}', players won't be able to connect."
+                );
+            }
+
+            foreach (PortMappingDTO port in PortMapping.Values)
+            {
+                port.Link ??= $"{Fqdn}:{port.External}";
             }
         }
 
