@@ -439,6 +439,9 @@ namespace Edgegap.Matchmaking
             if (request.responseCode == 409)
             {
                 Group._Notify("abandon failed (match found)", ObservableActionType.Warn);
+                Polling = true;
+                StartPollingGroup();
+                return;
             }
             else if (request.responseCode == 404)
             {
